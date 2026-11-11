@@ -1,2 +1,28 @@
-# WeatherFlow
-WeatherFlow is a data engineering project designed to build an end-to-end weather data pipeline using live weather information from an API. The project aims to extract current weather data for five UK cities, safely store the original raw data, transform and clean the data using Python and Pandas, and load the processed information into a SQLite database for querying and analysis using SQL. The pipeline will demonstrate the fundamental ETL (Extract, transform, Load) process and establish a foundaton for more advanced data engineering workflows.
+# WeatherFlow – Data Engineering Project
+
+## Project Overview
+
+WeatherFlow is a data engineering project that collects live weather data for five UK cities using an API.
+
+The project will build an ETL (Extract, Transform, Load) pipeline that retrieves weather information, stores the original raw data, transforms it into a structured format and loads the results into a SQLite database for SQL analysis.
+
+## Technologies
+
+- Python
+- Git and GitHub
+- Requests
+- Pandas
+- Jupyter Notebook
+- SQLite
+
+## How to Set Up
+
+1. Clone this repository.
+2. Open the project folder in VS Code.
+3. Create a Python virtual environment using `python -m venv .venv`.
+4. Activate the virtual environment.
+5. Install dependencies using `pip install -r requirements.txt`.
+
+## Author
+
+Pooja Lihal
