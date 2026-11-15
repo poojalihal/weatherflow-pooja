@@ -218,3 +218,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# WeatherFlow project exclusions
+.venv/
+__pycache__/
+*.pyc
+.env
+data/
+*.db
+.ipynb_checkpoints/
