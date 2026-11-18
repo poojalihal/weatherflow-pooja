@@ -8,11 +8,11 @@ import requests
 BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
 CITIES = [
+    {"name": "Birmingham", "latitude": 52.48142, "longitude": -1.89983},
+    {"name": "Cardiff", "latitude": 51.48, "longitude": -3.18},
+    {"name": "Edinburgh", "latitude": 55.95206, "longitude": -3.19648},
     {"name": "London", "latitude": 51.50853, "longitude": -0.12574},
     {"name": "Manchester", "latitude": 53.48095, "longitude": -2.23743},
-    {"name": "Birmingham", "latitude": 52.48142, "longitude": -1.89983},
-    {"name": "Edinburgh", "latitude": 55.95206, "longitude": -3.19648},
-    {"name": "Cardiff", "latitude": 51.48, "longitude": -3.18},
 ]
 
 
