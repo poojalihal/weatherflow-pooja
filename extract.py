@@ -1,9 +1,12 @@
 
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
@@ -70,11 +73,26 @@ def save_raw(city_name: str, payload: dict) -> Path:
 
 if __name__ == "__main__":
 
+    log_folder = Path(__file__).resolve().parent / "logs"
+    log_folder.mkdir(parents=True, exist_ok=True)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(
+                log_folder / "pipeline.log",
+                encoding="utf-8",
+            ),
+        ],
+    )
+
     for city in CITIES:
         city_name = city["name"]
 
         try:
-            print(f"Fetching weather for {city_name}...")
+            logger.info("Fetching weather for %s...", city_name)
 
             weather_data = fetch_city(city)
 
@@ -82,11 +100,14 @@ if __name__ == "__main__":
 
             hourly_records = len(weather_data["hourly"]["time"])
 
-            print(
-                f"Success: {city_name} - "
-                f"{hourly_records} hourly records saved to {saved_file}"
+            logger.info(
+                "Success: %s - %s hourly records saved to %s",
+                city_name,
+                hourly_records,
+                saved_file,
             )
 
         except requests.RequestException as error:
-            print(f"Error fetching {city_name}: {error}")
-            print("Continuing with the next city...")
+            logger.error("Error fetching %s: %s", city_name, error)
+            
+            logger.warning("Continuing with the next city...")
