@@ -8,6 +8,8 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+PROJECT_ROOT = Path(__file__).resolve().parent
+
 BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
 CITIES = [
@@ -35,7 +37,7 @@ def fetch_city(city: dict) -> dict:
         ),
         "past_days": 1,
         "forecast_days": 1,
-        "timezone": "Europe/London",
+        "timezone": "UTC",
     }
 
     response = requests.get(BASE_URL, params=params, timeout=10)
@@ -52,7 +54,7 @@ def save_raw(city_name: str, payload: dict) -> Path:
     date_folder = now.strftime("%Y-%m-%d")
     timestamp = now.strftime("%Y%m%dT%H%M%S")
 
-    output_folder = Path("data") / "raw" / date_folder
+    output_folder = PROJECT_ROOT / "data" / "raw" / date_folder
     output_folder.mkdir(parents=True, exist_ok=True)
 
     output_file = output_folder / f"{city_name.lower()}_{timestamp}.json"
@@ -73,7 +75,7 @@ def save_raw(city_name: str, payload: dict) -> Path:
 
 if __name__ == "__main__":
 
-    log_folder = Path(__file__).resolve().parent / "logs"
+    log_folder = PROJECT_ROOT / "logs"
     log_folder.mkdir(parents=True, exist_ok=True)
 
     logging.basicConfig(

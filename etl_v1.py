@@ -7,9 +7,10 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from extract import CITIES, fetch_city, save_raw
+from extract import PROJECT_ROOT, CITIES, fetch_city, save_raw
 
 logger = logging.getLogger(__name__)
+DB_PATH = PROJECT_ROOT / "weather.db"
 
 # --------------------------------------------------
 # 1. EXTRACT
@@ -83,12 +84,12 @@ def transform(raw: list[tuple[str, dict]]) -> pd.DataFrame:
     # Combine all cities into one DataFrame
     df = pd.concat(city_dfs, ignore_index=True)
 
-    # Convert time from text to datetime
-    df["time"] = pd.to_datetime(df["time"])
+    # Convert time from text to timezone-aware UTC datetime
+    df["time"] = pd.to_datetime(df["time"], utc=True)
 
     # Rename columns to include clear units
     df = df.rename(columns={
-        "time": "observed_at",
+        "time": "observed_at_utc",
         "temperature_2m": "temperature_c",
         "apparent_temperature": "feels_like_c",
         "relative_humidity_2m": "humidity_pct",
@@ -96,16 +97,20 @@ def transform(raw: list[tuple[str, dict]]) -> pd.DataFrame:
         "wind_speed_10m": "wind_speed_kmh",
     })
 
-    # Remove duplicate city and timestamp combinations
+    # Derive UK local time from UTC
+    df["observed_at_local"] = df["observed_at_utc"].dt.tz_convert("Europe/London")
+
+    # Remove duplicate city and UTC timestamp combinations
     df = df.drop_duplicates(
-        subset=["city", "observed_at"],
+        subset=["city", "observed_at_utc"],
         keep="last"
     )
 
     # Keep a consistent column order
     columns = [
         "city",
-        "observed_at",
+        "observed_at_utc",
+        "observed_at_local",
         "temperature_c",
         "feels_like_c",
         "humidity_pct",
@@ -124,13 +129,14 @@ def transform(raw: list[tuple[str, dict]]) -> pd.DataFrame:
 # 3. LOAD
 # --------------------------------------------------
 
-def load(df: pd.DataFrame, db_path: str = "weather.db") -> int:
+def load(df: pd.DataFrame, db_path: str | Path = DB_PATH) -> int:
     """Write weather records into SQLite and return rows written."""
 
     create_table_sql = """
     CREATE TABLE IF NOT EXISTS weather_hourly (
         city TEXT NOT NULL,
-        observed_at TEXT NOT NULL,
+        observed_at_utc TEXT NOT NULL,
+        observed_at_local TEXT NOT NULL,
         temperature_c REAL,
         feels_like_c REAL,
         humidity_pct INTEGER,
@@ -138,14 +144,15 @@ def load(df: pd.DataFrame, db_path: str = "weather.db") -> int:
         wind_speed_kmh REAL,
         weather_code INTEGER,
         ingested_at_utc TEXT NOT NULL,
-        PRIMARY KEY (city, observed_at)
+        PRIMARY KEY (city, observed_at_utc)
     );
     """
 
     insert_sql = """
     INSERT OR REPLACE INTO weather_hourly (
         city,
-        observed_at,
+        observed_at_utc,
+        observed_at_local,
         temperature_c,
         feels_like_c,
         humidity_pct,
@@ -154,19 +161,19 @@ def load(df: pd.DataFrame, db_path: str = "weather.db") -> int:
         weather_code,
         ingested_at_utc
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     """
 
-    # Prepare records for SQLite
+    # Prepare records for SQLite with timezone-aware timestamps
     records = []
-
     for row in df.itertuples(index=False):
-
-        observed_at = row.observed_at.strftime("%Y-%m-%dT%H:%M:%S")
+        observed_at_utc = row.observed_at_utc.isoformat(timespec="seconds")
+        observed_at_local = row.observed_at_local.isoformat(timespec="seconds")
 
         records.append((
             row.city,
-            observed_at,
+            observed_at_utc,
+            observed_at_local,
             row.temperature_c,
             row.feels_like_c,
             row.humidity_pct,
@@ -175,7 +182,6 @@ def load(df: pd.DataFrame, db_path: str = "weather.db") -> int:
             row.weather_code,
             row.ingested_at_utc,
         ))
-
     # Connect to SQLite
     conn = sqlite3.connect(db_path)
 
@@ -215,7 +221,7 @@ def main():
     logger.info("Loaded %s rows into weather.db", rows)
 
     # Verify the total number of records in the database
-    connection = sqlite3.connect("weather.db")
+    connection = sqlite3.connect(DB_PATH)
 
     try:
         result = connection.execute(
@@ -231,7 +237,7 @@ def main():
 
 
 if __name__ == "__main__":
-    log_folder = Path(__file__).resolve().parent / "logs"
+    log_folder = PROJECT_ROOT / "logs"
     log_folder.mkdir(parents=True, exist_ok=True)
 
     logging.basicConfig(
