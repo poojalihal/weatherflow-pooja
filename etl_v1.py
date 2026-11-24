@@ -1,57 +1,17 @@
 
 import logging
 import sqlite3
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
-import requests
 
-from extract import PROJECT_ROOT, CITIES, fetch_city, save_raw
+from extract import PROJECT_ROOT, extract
 
 logger = logging.getLogger(__name__)
 DB_PATH = PROJECT_ROOT / "weather.db"
 
-# --------------------------------------------------
-# 1. EXTRACT
-# --------------------------------------------------
-
-def extract() -> list[tuple[str, dict]]:
-    """Fetch weather data for each city, save raw JSON,
-    and return (city, payload) pairs.
-    """
-
-    raw = []
-
-    for city in CITIES:
-        city_name = city["name"]
-
-        try:
-            logger.info("Fetching weather for %s...", city_name)
-
-            payload = fetch_city(city)
-
-            saved_file = save_raw(city_name, payload)
-
-            raw.append((city_name, payload))
-
-            hourly_records = len(payload["hourly"]["time"])
-
-            logger.info(
-                "Success: %s - %s hourly records saved to %s",
-                city_name,
-                hourly_records,
-                saved_file,
-            )
-
-        except requests.RequestException as error:
-            logger.error("Error fetching %s: %s", city_name, error)
-            logger.warning("Continuing with the next city...")
-
-    if not raw:
-        raise RuntimeError("Extraction failed for all cities. No data to load.")
-
-    return raw
 
 
 # --------------------------------------------------
@@ -205,35 +165,51 @@ def load(df: pd.DataFrame, db_path: str | Path = DB_PATH) -> int:
 # MAIN PIPELINE
 # --------------------------------------------------
 
-def main():
+def main() -> None:
     """Run the complete Extract, Transform and Load pipeline."""
 
     logger.info("Starting WeatherFlow ETL pipeline...")
 
-    raw = extract()
+    raw, failed = extract()
 
-    df = transform(raw)
+    if raw:
+        df = transform(raw)
 
-    logger.info("Transformed records: %s", len(df))
+        logger.info("Transformed records: %s", len(df))
 
-    rows = load(df)
+        rows = load(df)
 
-    logger.info("Loaded %s rows into weather.db", rows)
+        logger.info("Loaded %s rows into weather.db", rows)
 
-    # Verify the total number of records in the database
-    connection = sqlite3.connect(DB_PATH)
+        # Verify the total number of records in the database
+        connection = sqlite3.connect(DB_PATH)
 
-    try:
-        result = connection.execute(
-            "SELECT COUNT(*) FROM weather_hourly"
-        ).fetchone()
+        try:
+            result = connection.execute(
+                "SELECT COUNT(*) FROM weather_hourly"
+            ).fetchone()
 
-        logger.info("Total rows in database: %s", result[0])
+            logger.info("Total rows in database: %s", result[0])
 
-    finally:
-        connection.close()
+        finally:
+            connection.close()
+
+    else:
+        logger.warning(
+            "No successful extractions. Skipping transformation and loading."
+        )
+
+    if failed:
+        logger.error(
+            "Run FAILED: no data for %s",
+            ", ".join(failed),
+        )
+
+        sys.exit(1)
 
     logger.info("WeatherFlow ETL pipeline completed successfully!")
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":

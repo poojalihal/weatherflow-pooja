@@ -1,6 +1,8 @@
 
 import json
 import logging
+import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -11,6 +13,14 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parent
 
 BASE_URL = "https://api.open-meteo.com/v1/forecast"
+HOURLY_VARIABLES = (
+    "temperature_2m,"
+    "relative_humidity_2m,"
+    "apparent_temperature,"
+    "precipitation,"
+    "wind_speed_10m,"
+    "weather_code"
+)
 
 CITIES = [
     {"name": "Birmingham", "latitude": 52.48142, "longitude": -1.89983},
@@ -21,29 +31,73 @@ CITIES = [
 ]
 
 
-def fetch_city(city: dict) -> dict:
-    """Fetch the weather forecast for one city."""
+def fetch_city(
+    city: dict,
+    max_retries: int = 3,
+    timeout: int = 10,
+) -> dict:
+    """Fetch weather data, retrying temporary API failures.
+
+    Make one initial attempt and up to three retries,
+    using exponential backoff.
+    """
+
+    if max_retries < 0:
+        raise ValueError("max_retries must be non-negative")
 
     params = {
         "latitude": city["latitude"],
         "longitude": city["longitude"],
-        "hourly": (
-            "temperature_2m,"
-            "relative_humidity_2m,"
-            "apparent_temperature,"
-            "precipitation,"
-            "wind_speed_10m,"
-            "weather_code"
-        ),
+        "hourly": HOURLY_VARIABLES,
         "past_days": 1,
         "forecast_days": 1,
         "timezone": "UTC",
     }
 
-    response = requests.get(BASE_URL, params=params, timeout=10)
-    response.raise_for_status()
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.get(
+                BASE_URL,
+                params=params,
+                timeout=timeout,
+            )
 
-    return response.json()
+            response.raise_for_status()
+
+            return response.json()
+
+        except requests.HTTPError as error:
+            status = (
+                error.response.status_code
+                if error.response is not None
+                else None
+            )
+
+            # Retry only HTTP server errors (5xx).
+            if status is None or not 500 <= status < 600:
+                raise
+
+            last_error = error
+
+        except (requests.Timeout, requests.ConnectionError) as error:
+            last_error = error
+
+        # Wait before retrying, unless all attempts are exhausted.
+        if attempt < max_retries:
+            wait = 2 ** attempt
+
+            logger.warning(
+                "%s: request attempt %s failed (%s); retrying in %s seconds",
+                city["name"],
+                attempt + 1,
+                last_error,
+                wait,
+            )
+
+            time.sleep(wait)
+
+    # All permitted attempts have failed.
+    raise last_error
 
 
 def save_raw(city_name: str, payload: dict) -> Path:
@@ -73,8 +127,58 @@ def save_raw(city_name: str, payload: dict) -> Path:
     return output_file
 
 
-if __name__ == "__main__":
+def extract(
+    cities: list[dict] = CITIES,
+) -> tuple[list[tuple[str, dict]], list[str]]:
+    """Fetch weather data and return successful and failed cities."""
 
+    results = []
+    failed = []
+
+    for city in cities:
+        city_name = city["name"]
+
+        try:
+            logger.info("Fetching weather for %s...", city_name)
+
+            payload = fetch_city(city)
+
+        except requests.RequestException as error:
+            logger.error(
+                "%s: giving up after request failure: %s",
+                city_name,
+                error,
+            )
+
+            failed.append(city_name)
+
+            logger.warning("Continuing with the next city...")
+
+            continue
+
+        saved_file = save_raw(city_name, payload)
+
+        hourly_records = len(payload["hourly"]["time"])
+
+        results.append((city_name, payload))
+
+        logger.info(
+            "Success: %s - %s hourly records saved to %s",
+            city_name,
+            hourly_records,
+            saved_file,
+        )
+
+    logger.info(
+        "Extraction summary: %s successful, %s failed",
+        len(results),
+        len(failed),
+    )
+
+    return results, failed
+
+
+if __name__ == "__main__":
     log_folder = PROJECT_ROOT / "logs"
     log_folder.mkdir(parents=True, exist_ok=True)
 
@@ -90,26 +194,21 @@ if __name__ == "__main__":
         ],
     )
 
-    for city in CITIES:
-        city_name = city["name"]
+    logger.info("Starting WeatherFlow extraction...")
 
-        try:
-            logger.info("Fetching weather for %s...", city_name)
+    results, failed = extract()
 
-            weather_data = fetch_city(city)
+    if failed:
+        logger.error(
+            "Extraction FAILED: no data for %s",
+            ", ".join(failed),
+        )
 
-            saved_file = save_raw(city_name, weather_data)
+        sys.exit(1)
 
-            hourly_records = len(weather_data["hourly"]["time"])
+    logger.info(
+        "Extraction completed successfully for %s cities",
+        len(results),
+    )
 
-            logger.info(
-                "Success: %s - %s hourly records saved to %s",
-                city_name,
-                hourly_records,
-                saved_file,
-            )
-
-        except requests.RequestException as error:
-            logger.error("Error fetching %s: %s", city_name, error)
-            
-            logger.warning("Continuing with the next city...")
+    sys.exit(0)
