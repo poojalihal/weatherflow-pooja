@@ -1,5 +1,6 @@
 # WeatherFlow reference architecture
 
+```mermaid
 flowchart LR
     subgraph SOURCES["DATA SOURCES"]
         A["WeatherAPI"]
@@ -58,3 +59,4 @@ flowchart LR
     L -.-> G
     L -.-> M
     L -.-> K
+```
