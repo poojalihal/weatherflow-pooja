@@ -228,3 +228,5 @@ data/
 *.db
 .ipynb_checkpoints/
 logs/
+# Additional SQLite database files
+*.sqlite
