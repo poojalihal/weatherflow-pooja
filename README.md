@@ -151,6 +151,70 @@ The pipeline performs three main stages:
 - Stores timestamps in ISO 8601 format with explicit timezone offsets.
 - Uses `INSERT OR REPLACE` to support repeated pipeline runs without creating duplicate city/time records.
 
+## Centralised Pipeline Configuration
+
+The WeatherFlow pipeline uses a shared configuration defined in `extract.py` to avoid duplicated settings and improve maintainability.
+
+### Configuration Constants
+
+| Constant | Purpose |
+|---|---|
+| `PROJECT_ROOT` | Absolute path to the WeatherFlow project directory |
+| `RAW_DIR` | Directory for storing raw API responses |
+| `DB_PATH` | Location of the SQLite weather database |
+| `LOG_DIR` | Directory for storing structured pipeline logs |
+| `BASE_URL` | Open-Meteo API endpoint |
+| `HOURLY_VARIABLES` | Weather variables requested from the API |
+| `CITIES` | Configured UK cities and their geographical coordinates |
+
+All seven pipeline configuration constants are defined in `extract.py`. The ETL module imports the shared database path, logging directory and extraction function rather than defining them again.
+
+```python
+from extract import DB_PATH, LOG_DIR, extract
+```
+
+This approach reduces configuration duplication, improves consistency and allows shared pipeline settings to be maintained in one location.
+
+### Working Directory Independence
+
+All pipeline storage paths are derived from `PROJECT_ROOT` using `pathlib`.
+
+The project root is determined from the location of the Python module rather than the current working directory.
+
+```python
+PROJECT_ROOT = Path(__file__).resolve().parent
+RAW_DIR = PROJECT_ROOT / "data" / "raw"
+DB_PATH = PROJECT_ROOT / "weather.db"
+LOG_DIR = PROJECT_ROOT / "logs"
+```
+
+This ensures that raw JSON files, the SQLite database and pipeline logs remain in their intended project locations even when the pipeline is executed from another directory.
+
+### Configuration and Portability Validation
+
+The centralised configuration was successfully validated on 24 November 2026.
+
+| Validation check | Result |
+|---|---|
+| Shared pipeline configuration definitions | Passed |
+| Shared module imports | Passed |
+| Absolute project paths | Passed |
+| Standalone extraction for five cities | Passed |
+| Full ETL execution with 240 records | Passed |
+| Execution from outside the project directory | Passed |
+| Correct raw data, database and log locations | Passed |
+| No pipeline files created in the home directory | Passed |
+| Successful pipeline exit code | 0 |
+| Database record count retained | 600 |
+| Duplicate primary keys | 0 |
+| Database integrity | Passed |
+
+The portability test confirmed that the pipeline could run successfully from the user's home directory while storing all generated files inside the WeatherFlow project directory.
+
+Repeated execution over the same observation window retained the database record count of 600 without creating duplicate primary keys.
+
+The standalone historical migration utility, `scripts/migrate_utc.py`, retains independent project, database and backup paths so that it can operate separately from the normal weather extraction pipeline.
+
 ## Timestamp Handling
 
 The pipeline uses three timestamp columns:

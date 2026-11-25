@@ -31,14 +31,14 @@
 | Skill | Current Level | Evidence of Learning | Next Steps |
 |---|---|---|---|
 | Python Exception Handling | Beginner | Implemented handling for request timeouts, connection errors and HTTP exceptions. | Practise custom exceptions and exception handling in other Python applications. |
-| Modular Programming | Beginner | Centralised API extraction logic in extract.py and reused it in etl_v1.py. | Practise separating configuration, business logic and reusable functions. |
+| Modular Programming | Beginner | Centralised API extraction logic and seven shared pipeline configuration constants in extract.py. Reused the extraction function and shared database and logging paths in etl_v1.py. | Practise separating configuration, business logic and reusable functions into appropriate Python modules. |
 | API Resilience | Beginner | Implemented and tested recovery from temporary network and server failures. | Explore rate limiting, retry policies and response validation. |
 | Exponential Backoff | Beginner | Implemented a maximum of three retries with waiting intervals of 1, 2 and 4 seconds. | Explore configurable retry policies and randomised backoff intervals. |
 | HTTP Status Codes | Beginner | Distinguished retryable HTTP 5xx server errors from non-retryable HTTP 4xx client errors. | Learn additional HTTP status codes and API-specific error-handling requirements. |
 | Structured Logging | Beginner | Replaced print statements with timestamped logging and persistent log files. | Practise logging configuration, log rotation and monitoring. |
 | Process Exit Codes | Beginner | Implemented exit code 0 for successful execution and exit code 1 when city extraction fails. | Learn how workflow schedulers use process exit codes. |
 | Partial Failure Handling | Beginner | Loaded successful city records while reporting an overall pipeline failure when another city failed. | Explore failed-record tracking, recovery workflows and data freshness monitoring. |
-| Project Path Management | Beginner | Used pathlib and PROJECT_ROOT to make file locations independent of the current working directory. | Practise portable configuration and environment-specific settings. |
+| Project Path Management | Beginner | Used pathlib, __file__ and PROJECT_ROOT to centralise RAW_DIR, DB_PATH and LOG_DIR. Successfully executed the ETL pipeline from outside the project directory and verified that all generated files remained in their intended project locations. | Practise portable configuration, environment-specific settings and cross-platform path management. |
 
 ## Data Quality and Database Management
 
@@ -48,7 +48,7 @@
 | Database Migration | Beginner | Migrated 480 historical weather records to an updated timezone-aware schema with guidance. | Practise schema evolution and repeatable database migration strategies. |
 | Database Backup and Recovery | Beginner | Created SQLite backups and tested migration on a disposable database copy before updating the original database. | Practise automated backup and recovery procedures. |
 | Database Transactions | Beginner | Used transactional migration and rollback handling to protect existing records. | Learn transaction isolation and atomic database operations. |
-| Data Quality Validation | Developing | Validated record counts, city coverage, mandatory fields, duplicate keys and observation timestamp consistency. | Implement reusable and automated data quality checks. |
+| Data Quality Validation | Developing | Validated record counts, city coverage, mandatory fields, duplicate keys and observation timestamp consistency. Confirmed that configuration centralisation preserved 600 database records with zero duplicate primary keys and successful database integrity verification. | Implement reusable and automated data quality checks, including regression testing after pipeline changes. |
 | Database Integrity | Beginner | Used SQLite PRAGMA integrity_check and verified the composite primary key definition. | Practise database constraints and integrity monitoring. |
 | Record-Count Idempotency | Beginner | Verified that repeated pipeline runs over the same observation window retained 600 records without introducing duplicates. | Explore incremental loading and stronger idempotency guarantees. |
 | Data Reconciliation | Beginner | Compared migrated records against the original database backup and verified that all 480 historical records were preserved. | Practise source-to-target reconciliation across different data systems. |
@@ -78,6 +78,18 @@ Following the Week 1 feedback, I worked on improving the reliability, portabilit
 
 I improved dependency management, introduced structured logging, implemented project-root paths and converted weather observation timestamps to a timezone-aware UTC format.
 
+I further improved pipeline maintainability by centralising seven shared configuration constants in `extract.py` and importing the shared database and logging paths into `etl_v1.py`.
+
+Through this improvement, I learned how Python modules can share configuration and reusable functionality without duplicating definitions.
+
+I validated the configuration through syntax checks, module import checks, standalone extraction and full ETL execution.
+
+I also successfully executed the pipeline from my home directory. All five cities were processed, 240 records were transformed and loaded, and the pipeline returned exit code 0.
+
+I verified that raw JSON files, the SQLite database and persistent logs remained inside the project directory. The database record count remained at 600, with no duplicate primary keys.
+
+Reviewing the standalone database migration utility also helped me understand the importance of considering module dependencies and the purpose of individual scripts when making configuration management decisions.
+
 I also migrated 480 existing weather records to the updated database schema and verified that all historical records were preserved.
 
 To improve pipeline reliability, I implemented API timeouts, exception handling, exponential backoff and failed city tracking.
@@ -101,7 +113,7 @@ Although I have gained practical experience with these concepts, I still need fu
 
 ## Goals for Week 2
 
-1. Improve independent Python programming and modular code organisation.
+1. Improve independent Python programming, modular code organisation and centralised configuration management.
 2. Develop reusable automated unit tests using pytest.
 3. Improve automated data quality and API response validation.
 4. Explore pipeline scheduling, orchestration and monitoring.

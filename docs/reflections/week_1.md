@@ -52,6 +52,8 @@ After receiving feedback on my Week 1 deliverables, I worked on improving the re
 - Implemented a composite primary key using `city` and `observed_at_utc` to prevent duplicate observations.
 - Updated the SQL queries, README and data dictionary to reflect the revised database schema.
 - Centralised API extraction logic in `extract.py` to avoid duplicated code.
+- Centralised seven shared pipeline configuration constants in `extract.py`, including project paths, the API endpoint, hourly weather variables and city configuration.
+- Updated `etl_v1.py` to import shared database and logging paths from `extract.py`, reducing duplicated configuration and improving maintainability.
 - Implemented request timeouts, exception handling and exponential backoff with retry intervals of 1, 2 and 4 seconds.
 - Added failed city tracking and process exit codes to ensure that unsuccessful pipeline executions are reported accurately.
 
@@ -68,6 +70,12 @@ The partial failure test successfully loaded 192 records from four cities while 
 The complete failure test confirmed that transformation and loading were skipped when all five cities failed.
 
 I tested a deliberately incorrect API endpoint and confirmed that the pipeline returned exit code 1. After restoring the correct endpoint, the pipeline successfully processed all five cities and returned exit code 0.
+
+I successfully validated the centralised pipeline configuration through syntax checks, module import checks, standalone extraction and full ETL execution.
+
+I also tested the pipeline from outside the project directory by running it from my home directory. All five cities were successfully processed, 240 weather records were transformed and loaded, and the pipeline returned exit code 0.
+
+I verified that the raw JSON files, SQLite database and persistent logs remained inside the WeatherFlow project directory. No pipeline-generated files were created in my home directory.
 
 ### What was challenging, and how I addressed it
 
@@ -93,6 +101,16 @@ If one city fails, the remaining cities can still be processed, but the overall 
 
 I learned how to use mock objects, temporary directories and disposable databases to test failure scenarios safely. I also used SHA-256 checksum comparisons to verify that the original database remained unchanged during failure testing.
 
+**Understanding centralised configuration and modular programming**
+
+I learned that defining the same configuration settings in multiple Python files can make a project harder to maintain and increase the risk of inconsistent behaviour.
+
+By centralising shared constants in `extract.py` and importing them into `etl_v1.py`, I gained a better understanding of how Python modules can share configuration and reusable functionality.
+
+I also learned the difference between the current working directory and the directory containing a Python script. Using `pathlib`, `__file__` and absolute project paths helped me understand how to make a pipeline portable across different working directories.
+
+I reviewed the standalone database migration utility and learned that configuration centralisation should also consider module dependencies and the purpose of individual scripts. The migration utility retained its independent paths because it performs a separate historical database maintenance task.
+
 ### Evidence of successful improvements
 
 The final database validation confirmed:
@@ -106,6 +124,13 @@ The final database validation confirmed:
 - Successful SQLite database integrity verification.
 - Successful record-count idempotency verification.
 - Successful API retry and failure-handling tests.
+- Successful validation of seven shared pipeline configuration constants.
+- Successful syntax and shared module import checks.
+- Successful standalone extraction and full ETL execution after configuration centralisation.
+- Successful pipeline execution from outside the project directory.
+- Correct storage of raw JSON files, SQLite database and persistent logs within the project directory.
+- No pipeline-generated files created in the home directory.
+- Database record count retained at 600 after repeated execution over the same observation window.
 
 ### What surprised me during the improvements
 

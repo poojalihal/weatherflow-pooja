@@ -7,10 +7,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from extract import PROJECT_ROOT, extract
+from extract import DB_PATH, LOG_DIR, extract
 
 logger = logging.getLogger(__name__)
-DB_PATH = PROJECT_ROOT / "weather.db"
 
 
 
@@ -213,8 +212,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    log_folder = PROJECT_ROOT / "logs"
-    log_folder.mkdir(parents=True, exist_ok=True)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
 
     logging.basicConfig(
         level=logging.INFO,
@@ -222,7 +220,7 @@ if __name__ == "__main__":
         handlers=[
             logging.StreamHandler(),
             logging.FileHandler(
-                log_folder / "pipeline.log",
+                LOG_DIR / "pipeline.log",
                 encoding="utf-8",
             ),
         ],

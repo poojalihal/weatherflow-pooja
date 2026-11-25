@@ -10,7 +10,11 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+# Centralised project paths
 PROJECT_ROOT = Path(__file__).resolve().parent
+RAW_DIR = PROJECT_ROOT / "data" / "raw"
+DB_PATH = PROJECT_ROOT / "weather.db"
+LOG_DIR = PROJECT_ROOT / "logs"
 
 BASE_URL = "https://api.open-meteo.com/v1/forecast"
 HOURLY_VARIABLES = (
@@ -108,7 +112,7 @@ def save_raw(city_name: str, payload: dict) -> Path:
     date_folder = now.strftime("%Y-%m-%d")
     timestamp = now.strftime("%Y%m%dT%H%M%S")
 
-    output_folder = PROJECT_ROOT / "data" / "raw" / date_folder
+    output_folder = RAW_DIR / date_folder
     output_folder.mkdir(parents=True, exist_ok=True)
 
     output_file = output_folder / f"{city_name.lower()}_{timestamp}.json"
@@ -179,8 +183,7 @@ def extract(
 
 
 if __name__ == "__main__":
-    log_folder = PROJECT_ROOT / "logs"
-    log_folder.mkdir(parents=True, exist_ok=True)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
 
     logging.basicConfig(
         level=logging.INFO,
@@ -188,7 +191,7 @@ if __name__ == "__main__":
         handlers=[
             logging.StreamHandler(),
             logging.FileHandler(
-                log_folder / "pipeline.log",
+                LOG_DIR / "pipeline.log",
                 encoding="utf-8",
             ),
         ],
