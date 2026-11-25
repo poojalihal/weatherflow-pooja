@@ -94,6 +94,7 @@ The raw data, database, backup and log files are local runtime artefacts and are
 
    ```bash
    python -m pip install -r requirements.txt
+   python -m pip install -e .
    ```
 
 6. For notebook exploration, testing and development, install the development dependencies:
@@ -524,3 +525,48 @@ All three queries were successfully executed against the migrated `weather_hourl
 ## Author
 
 Pooja Lihal
+
+## Week 2 — Modular WeatherFlow Pipeline
+
+WeatherFlow has been refactored into a modular Python package using a `src/` layout.
+
+### Run the pipeline
+
+```bash
+python -m weatherflow run
+```
+
+### Run automated tests
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest tests/ -v
+```
+
+### Configuration
+
+Pipeline settings are stored in `config.yaml`, including API endpoints, city coordinates, retry settings and storage paths.
+
+### Package modules
+
+- `config.py` — Configuration loading and validation.
+- `extract.py` — API extraction, exponential backoff and raw JSON storage.
+- `transform.py` — Data cleaning and standardisation.
+- `load.py` — Idempotent SQLite loading.
+- `pipeline.py` — ETL orchestration.
+- `__main__.py` — Command-line interface and logging.
+
+### Pipeline outputs
+
+- Raw JSON: `data/raw/`
+- SQLite database: `data/weather.db`
+- Pipeline logs: `logs/pipeline.log`
+
+### Validation
+
+- Successful pipeline execution from the project root and its parent directory.
+- 240 hourly weather records across five UK cities.
+- No increase in database row count when repeating the same extraction window.
+- Nine passing automated configuration and retry tests.
+
+The original Week 1 scripts and database are retained for historical reference.
