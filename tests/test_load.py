@@ -305,3 +305,84 @@ def test_missing_date_dimension_rejects_load(
         match="FOREIGN KEY",
     ):
         load(sample_frame, test_config)
+
+
+def test_real_london_fixture_load_is_idempotent(
+    london_payload,
+    test_config,
+):
+    """Transform and load the real fixture twice without duplicates."""
+
+    df = transform(
+        [("London", london_payload)],
+        load_wmo_codes(),
+        "2026-11-26T12:00:00+00:00",
+    )
+
+    df["source"] = "open_meteo_forecast"
+
+    assert len(df) == 6
+
+    db_path = test_config["paths"]["database"]
+
+    # First load.
+    assert load(df, test_config) == 6
+
+    with closing(sqlite3.connect(db_path)) as conn:
+
+        first_count = conn.execute(
+            "SELECT COUNT(*) "
+            "FROM fact_weather_hourly"
+        ).fetchone()[0]
+
+    # Second load of identical observation keys.
+    assert load(df, test_config) == 6
+
+    with closing(sqlite3.connect(db_path)) as conn:
+
+        second_count = conn.execute(
+            "SELECT COUNT(*) "
+            "FROM fact_weather_hourly"
+        ).fetchone()[0]
+
+        duplicate_keys = conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM (
+                SELECT
+                    city_id,
+                    observed_at_utc,
+                    source
+                FROM fact_weather_hourly
+                GROUP BY
+                    city_id,
+                    observed_at_utc,
+                    source
+                HAVING COUNT(*) > 1
+            )
+            """
+        ).fetchone()[0]
+
+        city_name = conn.execute(
+            """
+            SELECT DISTINCT c.city_name
+            FROM fact_weather_hourly AS f
+            JOIN dim_city AS c
+                ON f.city_id = c.city_id
+            """
+        ).fetchone()[0]
+
+        integrity = conn.execute(
+            "PRAGMA integrity_check"
+        ).fetchone()[0]
+
+        foreign_key_errors = conn.execute(
+            "PRAGMA foreign_key_check"
+        ).fetchall()
+
+    assert first_count == 6
+    assert second_count == 6
+    assert duplicate_keys == 0
+    assert city_name == "London"
+    assert integrity == "ok"
+    assert foreign_key_errors == []
