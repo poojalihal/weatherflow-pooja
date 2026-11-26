@@ -30,7 +30,12 @@ def run(config: dict) -> int:
             ),
         )
 
-        logger.info("Transformed records: %s", len(df))
+        df["source"] = "open_meteo_forecast"
+
+        logger.info(
+            "Transformed records: %s",
+            len(df),
+        )
 
         save_processed(
             df,
@@ -38,7 +43,7 @@ def run(config: dict) -> int:
             run_time,
         )
 
-        load(df, config["paths"]["database"])
+        load(df, config)
 
     else:
         logger.warning(
