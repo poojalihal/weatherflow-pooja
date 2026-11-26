@@ -953,3 +953,109 @@ the internet connection disconnected.
 All 62 tests passed with 92.75% source code coverage,
 demonstrating that the automated tests do not depend
 on access to the external weather API.
+
+### Task 2.6 — Backfill and Incremental Loading
+
+WeatherFlow supports historical weather backfills and
+watermark-based incremental forecast extraction.
+
+#### Historical Backfill
+
+Load thirty days of historical weather data:
+
+```bash
+python -m weatherflow backfill --days 30
+```
+
+The default end date is five days before the current
+UTC date to accommodate historical data availability.
+
+Explicit historical dates can also be requested:
+
+```bash
+python -m weatherflow backfill --start-date 2026-10-23 --end-date 2026-11-21
+```
+
+Historical requests are divided into seven-day,
+non-overlapping chunks for each configured city.
+
+Raw JSON responses are retained for reproducibility
+and future historical reprocessing.
+
+Historical facts use the source open_meteo_archive.
+
+#### Incremental Forecast Loading
+
+```bash
+python -m weatherflow run
+```
+
+The latest loaded non-future observation is used as
+the high-water mark for each city and source.
+
+A configurable two-hour overlap allows late
+corrections to be incorporated through database upserts.
+
+Future forecast hours are refreshed during every run.
+
+Cities without an existing forecast watermark use
+the configured one-day historical fallback.
+
+Forecast facts use the source open_meteo_forecast.
+
+The original full-window mode remains available:
+
+```bash
+python -m weatherflow run --full
+```
+
+#### Shared Processing Architecture
+
+Historical and forecast extraction use shared API retry logic.
+
+Both modes reuse the same transformation, validation,
+quarantine, processed storage and transactional database
+loading functions.
+
+Expected hourly coverage is calculated from planned
+request windows rather than received response timestamps.
+
+Records outside the requested observation window
+trigger a blocking data quality failure.
+
+Incremental forecast runs evaluate observation freshness.
+
+Historical backfills skip the incremental freshness check.
+
+New and updated fact keys are counted and logged
+before and after successful database loading.
+
+Historical and forecast records remain distinguishable
+through the composite fact primary key:
+
+city_id, observed_at_utc, source
+
+#### Automated Testing
+
+```bash
+python -m pytest tests/ --cov=src --cov-report=term-missing --cov-fail-under=70
+```
+
+Tests cover historical date calculations, seven-day
+chunking, watermark isolation, exclusion of future
+forecast hours, incremental overlap, fallback behaviour,
+API request parameters, archive idempotency and
+blocking extraction failures.
+
+#### Known Limitations
+
+Historical availability depends on the external API.
+
+New-versus-updated counts assume one pipeline writer
+at a time.
+
+The archive availability lag may leave a gap between
+historical and forecast records.
+
+Generated raw files, processed data, quarantine records,
+databases, coverage files and logs are excluded from Git.
