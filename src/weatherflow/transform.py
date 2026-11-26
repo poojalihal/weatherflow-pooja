@@ -167,6 +167,8 @@ def transform(
     raw_records: list[tuple[str, dict]],
     lookup: pd.DataFrame,
     ingested_at_utc: str,
+    *,
+    deduplicate_records: bool = True,
 ) -> pd.DataFrame:
     """Apply the complete transformation sequence."""
     if not raw_records:
@@ -184,7 +186,8 @@ def transform(
     df = standardise_columns(df)
     df = add_weather_description(df, lookup)
     df = add_derived_metrics(df)
-    df = deduplicate(df)
+    if deduplicate_records:
+        df = deduplicate(df)
 
     # Retain the original schema columns for loader compatibility.
     columns = [
