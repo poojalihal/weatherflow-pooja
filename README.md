@@ -845,3 +845,111 @@ run but successfully verified through automated tests.
 
 Generated DQ reports and quarantine files are excluded
 from Git.
+
+### Task 2.5 — Testing with Pytest
+
+WeatherFlow includes automated unit and integration tests
+covering configuration, extraction, transformation,
+data quality validation, storage and database loading.
+
+Shared test fixtures are defined in tests/conftest.py.
+
+The genuine Open-Meteo London response fixture is stored at:
+
+tests/fixtures/open_meteo_london.json
+
+The fixture contains six hourly observations extracted
+from the real API response collected on 26 November 2026.
+
+External API requests and retry delays are mocked.
+An automatic pytest fixture prevents accidental real
+HTTP requests through the Requests library.
+
+Integration tests use temporary databases and directories
+to avoid modifying operational weather data.
+
+#### Running Tests and Measuring Coverage
+
+```bash
+python -m pytest tests/ -v
+```
+
+Coverage command:
+
+```bash
+python -m pytest tests/ --cov=src --cov-report=term-missing --cov-fail-under=70
+```
+
+#### Task 2.5 Validation Results
+
+Validation date: 26 November 2026.
+
+| Validation metric | Result |
+|---|---|
+| Automated tests | 62/62 passed |
+| Failed tests | 0 |
+| Test execution time | 1.88 seconds |
+| Total executable statements | 469 |
+| Covered statements | 435 |
+| Missed statements | 34 |
+| Overall statement coverage | 92.75% |
+| Required minimum coverage | 70% |
+| Test and coverage exit code | 0 |
+| Real API response fixture | 6 hourly observations |
+| Real HTTP requests through Requests | Blocked |
+| Real-response integration test | Passed |
+
+#### Coverage Output
+
+```text
+Name                              Stmts   Miss  Cover
+-----------------------------------------------------
+src/weatherflow/__init__.py           2      0   100%
+src/weatherflow/__main__.py          23     23     0%
+src/weatherflow/config.py            34      6    82%
+src/weatherflow/dq_reporting.py      37      0   100%
+src/weatherflow/extract.py           60      0   100%
+src/weatherflow/load.py              72      2    97%
+src/weatherflow/pipeline.py          70      2    97%
+src/weatherflow/storage.py           20      0   100%
+src/weatherflow/transform.py         55      1    98%
+src/weatherflow/validate.py          96      0   100%
+-----------------------------------------------------
+TOTAL                               469     34    93%
+```
+
+Required test coverage of 70% reached.
+Total coverage: 92.75%.
+
+The displayed TOTAL percentage is rounded to 93%.
+
+#### Real-Response Database Integration Test
+
+| Load | Fact records |
+|---|---:|
+| First load | 6 |
+| Second load | 6 |
+| Duplicate fact keys | 0 |
+
+The integration test demonstrated idempotent loading
+using a genuine six-hour weather response.
+
+#### Known Coverage Limitations
+
+The command-line entry point in __main__.py is not directly
+covered by the current automated test suite.
+
+The overall statement coverage exceeds the programme
+requirement by 22.75 percentage points.
+
+Coverage will be measured again after implementing
+historical backfill and incremental extraction in Task 2.6.
+
+#### Offline Testing Verification
+
+The complete automated test suite was executed with
+the internet connection disconnected.
+
+All 62 tests passed with 92.75% source code coverage,
+demonstrating that the automated tests do not depend
+on access to the external weather API.
