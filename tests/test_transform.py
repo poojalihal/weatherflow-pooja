@@ -193,3 +193,50 @@ def test_complete_transform_is_repeatable(sample_payload):
     pd.testing.assert_frame_equal(first, second)
 
     assert first.shape == (2, 19)
+
+
+def test_flatten_real_london_payload(london_payload):
+    """Flatten six genuine API observations with expected columns."""
+
+    df = flatten_payload(
+        london_payload,
+        "London",
+    )
+
+    expected_columns = {
+        "time",
+        "temperature_2m",
+        "relative_humidity_2m",
+        "apparent_temperature",
+        "precipitation",
+        "wind_speed_10m",
+        "weather_code",
+        "is_day",
+        "city",
+        "latitude",
+        "longitude",
+    }
+
+    assert len(df) == 6
+
+    assert expected_columns.issubset(
+        df.columns
+    )
+
+    assert df["city"].eq("London").all()
+
+    assert df["time"].tolist() == (
+        london_payload["hourly"]["time"]
+    )
+
+    assert df["temperature_2m"].tolist() == (
+        london_payload["hourly"]["temperature_2m"]
+    )
+
+    assert df["latitude"].eq(
+        london_payload["latitude"]
+    ).all()
+
+    assert df["longitude"].eq(
+        london_payload["longitude"]
+    ).all()
