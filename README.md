@@ -729,3 +729,79 @@ The observation window covers 25-26 November 2026.
 Query 4 currently returns weekday observations only.
 Weekend comparisons will become available when historical
 data is loaded during Task 2.6.
+
+### Task 2.4 — Data Quality Checks and Quarantine
+
+WeatherFlow includes a configurable data quality validation
+gate between transformation and database loading.
+
+Eight validation checks cover five data quality dimensions:
+
+- Completeness
+- Validity
+- Uniqueness
+- Timeliness
+- Consistency
+
+| Check | Severity |
+|---|---|
+| Mandatory fields | Quarantine |
+| Temperature range | Quarantine |
+| Humidity range | Quarantine |
+| Non-negative precipitation and wind speed | Quarantine |
+| Duplicate observation keys | Fail |
+| Expected hourly coverage | Fail |
+| Observation freshness | Warn |
+| Feels-like temperature consistency | Warn |
+
+Thresholds are defined in config.yaml under data_quality.
+
+Invalid rows are written to partitioned Parquet files under:
+
+data/quarantine/run_date=YYYY-MM-DD/
+
+Each quarantined row contains a dq_failure_reason field.
+
+Blocking checks raise DataQualityError and prevent the
+database load.
+
+Warning checks are recorded without blocking valid data.
+
+Hourly coverage is evaluated before quarantine so that
+invalid measurements can be isolated without automatically
+causing a missing-hour failure.
+
+Duplicate observations are retained during transformation
+until the uniqueness validation has been performed.
+
+Only validated records reach processed Parquet storage
+and the analytical database.
+
+Data quality reports are generated under:
+
+docs/dq_reports/
+
+Reports include check results, severity, affected record
+counts, quarantined records and loaded records.
+
+Generated reports are excluded from Git.
+
+The timeliness check applies to incremental runs and
+ignores future forecast observations. Incremental extraction
+will be introduced in Task 2.6.
+
+Run the pipeline:
+
+```bash
+python -m weatherflow run
+```
+
+Run the automated tests:
+
+```bash
+python -m pytest tests/ -v
+```
+
+The automated tests include deliberately invalid temperatures,
+duplicate observations, missing hourly records, freshness
+warnings and extraction failures.
