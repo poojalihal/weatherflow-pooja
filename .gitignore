@@ -230,3 +230,6 @@ data/
 logs/
 # Additional SQLite database files
 *.sqlite
+
+# Generated data quality reports
+docs/dq_reports/

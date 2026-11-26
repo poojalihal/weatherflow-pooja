@@ -250,3 +250,33 @@ observed_at_utc and source.
 Grain: one row per city, per hour, per source.
 
 See docs/erd.md for the complete dimensional model.
+
+## Week 2 — Data Quality and Quarantine (Task 2.4)
+
+| Column | Type | Definition |
+|---|---|---|
+| dq_failure_reason | String | Semicolon-separated validation check names explaining why a record was quarantined |
+
+The dq_failure_reason column is present only in quarantined
+records.
+
+Quarantined records retain their original transformed values
+for investigation and possible reprocessing.
+
+Data quality thresholds are configured in config.yaml.
+
+Dataset-level uniqueness is evaluated using:
+
+city, observed_at_utc, source
+
+Expected hourly coverage is checked against the requested
+UTC observation window for every configured city.
+
+Quarantine and warning counts can overlap across checks
+because a single record may fail more than one check.
+
+The final number of quarantined rows counts each rejected
+record only once.
+
+The data quality report records check outcomes and pipeline
+loading results for each execution.
