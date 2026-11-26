@@ -805,3 +805,43 @@ python -m pytest tests/ -v
 The automated tests include deliberately invalid temperatures,
 duplicate observations, missing hourly records, freshness
 warnings and extraction failures.
+
+#### Task 2.4 Validation Results
+
+Validation date: 26 November 2026.
+
+| Validation metric | Result |
+|---|---|
+| Automated tests | 56/56 passed |
+| Test execution time | 1.34 seconds |
+| Pipeline exit code | 0 |
+| Input records | 240 |
+| Valid records | 240 |
+| Quarantined records | 0 |
+| Loaded records | 240 |
+| Valid record rate | 100% |
+| Applicable DQ checks passed | 8 |
+| DQ checks skipped | 1 |
+| Failed DQ checks | 0 |
+| Processed dataset | 240 rows, 20 columns |
+| Duplicate observation keys | 0 |
+| Foreign key violations | 0 |
+| Database integrity | ok |
+
+#### Bad Data Injection Results
+
+| Scenario | Input | Quarantined | Loaded | Exit code |
+|---|---:|---:|---:|---:|
+| Invalid 99-degree temperature | 24 | 1 | 23 | 0 |
+| Duplicate and invalid temperature | 25 | 1 | 0 | 1 |
+
+Both scenarios successfully generated data quality reports.
+
+The duplicate test confirmed that the entire database load
+was blocked before any invalid batch records were loaded.
+
+The freshness check was skipped during the live full-window
+run but successfully verified through automated tests.
+
+Generated DQ reports and quarantine files are excluded
+from Git.
