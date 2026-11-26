@@ -55,3 +55,11 @@ data_quality:
   wind_speed_min_kmh: 0
   freshness_max_hours: 3
   feels_like_max_difference_c: 15
+backfill:
+  default_days: 30
+  archive_lag_days: 5
+  chunk_days: 7
+  request_delay_seconds: 1
+incremental:
+  overlap_hours: 2
+  fallback_past_days: 1

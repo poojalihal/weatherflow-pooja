@@ -1,7 +1,9 @@
-"""Orchestrate the WeatherFlow ETL pipeline."""
+"""Orchestrate historical and incremental WeatherFlow loads."""
 
 import logging
-from datetime import datetime, timezone
+
+from copy import deepcopy
+from datetime import date, datetime, timedelta, timezone
 
 from .extract import extract
 from .transform import transform
@@ -17,18 +19,34 @@ from .dq_reporting import (
     save_quarantine,
     write_dq_report,
 )
+from .windows import (
+    ARCHIVE_SOURCE,
+    FORECAST_SOURCE,
+    count_load_changes,
+    expected_window_hours,
+    extract_windows,
+    plan_backfill,
+    plan_incremental,
+    resolve_backfill_dates,
+)
 
 logger = logging.getLogger(__name__)
 
 
-def run(config: dict) -> int:
-    """Run extraction, transformation, validation and loading."""
+def _execute(
+    config: dict,
+    acquire,
+    source: str,
+    run_time: datetime,
+    *,
+    incremental: bool,
+) -> int:
+    """Execute the shared transform, validate and load path."""
 
     logger.info(
-        "Starting WeatherFlow ETL pipeline..."
+        "Starting WeatherFlow pipeline: source=%s",
+        source,
     )
-
-    run_time = datetime.now(timezone.utc)
 
     results = []
     input_count = 0
@@ -39,22 +57,19 @@ def run(config: dict) -> int:
     error_message = ""
 
     try:
-        raw, failed = extract(config)
 
-        extraction_passed = (
-            bool(raw) and not failed
-        )
+        raw, failed, expected_hours = acquire()
 
         results.append(
             CheckResult(
                 name="extraction_success",
                 dimension="completeness",
                 severity="fail",
-                passed=extraction_passed,
+                passed=bool(raw) and not failed,
                 failed_rows=0,
                 details=(
-                    f"{len(raw)} successful cities; "
-                    f"{len(failed)} failed cities. "
+                    f"{len(raw)} successful requests; "
+                    f"{len(failed)} failed requests. "
                     f"Failures: {', '.join(failed)}"
                 ),
             )
@@ -66,18 +81,16 @@ def run(config: dict) -> int:
                 "Database load cancelled."
             )
 
-        lookup = load_wmo_codes()
-
         df = transform(
             raw,
-            lookup,
+            load_wmo_codes(),
             ingested_at_utc=run_time.isoformat(
                 timespec="seconds"
             ),
             deduplicate_records=False,
         )
 
-        df["source"] = "open_meteo_forecast"
+        df["source"] = source
 
         input_count = len(df)
 
@@ -86,25 +99,45 @@ def run(config: dict) -> int:
             input_count,
         )
 
-        expected_hours = forecast_expected_hours(
-            config,
-            run_time,
+        # Check for unexpected hours as well as missing hours.
+        unexpected = 0
+
+        for city, hours in expected_hours.items():
+
+            mask = (
+                df["city"].eq(city)
+                & df["observed_at_utc"].notna()
+                & ~df["observed_at_utc"].isin(hours)
+            )
+
+            unexpected += int(mask.sum())
+
+        results.append(
+            CheckResult(
+                name="unexpected_observation_hours",
+                dimension="validity",
+                severity="fail",
+                passed=unexpected == 0,
+                failed_rows=unexpected,
+                details=(
+                    f"{unexpected} records outside "
+                    "the requested observation window."
+                ),
+            )
         )
 
-        # Current runs use a full forecast window.
-        # Incremental mode is introduced in Task 2.6.
         try:
+
             good, bad, checks = validate(
                 df,
                 config,
                 expected_hours,
                 now=run_time,
-                incremental=False,
+                incremental=incremental,
             )
 
         except DataQualityError as error:
-            # Preserve the check results and quarantined
-            # records even when the run must fail.
+
             good = error.good_rows
             bad = error.quarantined_rows
             checks = error.results
@@ -117,6 +150,7 @@ def run(config: dict) -> int:
         for result in results:
 
             if result.skipped:
+
                 logger.info(
                     "DQ SKIPPED: %s | %s",
                     result.name,
@@ -124,12 +158,14 @@ def run(config: dict) -> int:
                 )
 
             elif result.passed:
+
                 logger.info(
                     "DQ PASS: %s",
                     result.name,
                 )
 
             else:
+
                 level = (
                     logging.ERROR
                     if result.severity == "fail"
@@ -155,18 +191,19 @@ def run(config: dict) -> int:
         )
 
         if not bad.empty:
+
             save_quarantine(
                 bad,
                 config["paths"]["quarantine_dir"],
                 run_time,
             )
 
-        # Blocking failures must stop BEFORE loading.
         if any(
             result.severity == "fail"
             and not result.passed
             for result in results
         ):
+
             raise DataQualityError(
                 good,
                 bad,
@@ -178,7 +215,11 @@ def run(config: dict) -> int:
                 "No valid records available to load."
             )
 
-        # Only validated records reach processed storage.
+        new_count, updated_count = count_load_changes(
+            good,
+            config["paths"]["database"],
+        )
+
         save_processed(
             good,
             config["paths"]["processed_dir"],
@@ -190,22 +231,29 @@ def run(config: dict) -> int:
             config,
         )
 
-        if any(
-            not result.passed
-            for result in results
-        ):
-            status = "SUCCESS_WITH_DQ_ISSUES"
-        else:
-            status = "SUCCESS"
+        logger.info(
+            "Load summary: source=%s new=%s updated=%s "
+            "total_upserted=%s",
+            source,
+            new_count,
+            updated_count,
+            loaded_count,
+        )
+
+        status = (
+            "SUCCESS_WITH_DQ_ISSUES"
+            if any(not result.passed for result in results)
+            else "SUCCESS"
+        )
 
         logger.info(
-            "WeatherFlow ETL pipeline "
-            "completed successfully!"
+            "WeatherFlow ETL pipeline completed successfully!"
         )
 
         return 0
 
     except DataQualityError as error:
+
         error_message = str(error)
 
         logger.error(
@@ -216,6 +264,7 @@ def run(config: dict) -> int:
         return 1
 
     except Exception as error:
+
         error_message = str(error)
 
         logger.exception(
@@ -225,7 +274,7 @@ def run(config: dict) -> int:
         return 1
 
     finally:
-        # Produce a report on successful and failed runs.
+
         write_dq_report(
             results,
             config["paths"]["dq_reports_dir"],
@@ -237,3 +286,135 @@ def run(config: dict) -> int:
             loaded_rows=loaded_count,
             error=error_message,
         )
+
+
+def run(
+    config: dict,
+    *,
+    incremental: bool = True,
+) -> int:
+    """Run incremental forecast loading by default."""
+
+    run_time = datetime.now(timezone.utc)
+
+    def acquire():
+
+        if not incremental:
+
+            raw, failed = extract(config)
+
+            return (
+                raw,
+                failed,
+                forecast_expected_hours(
+                    config,
+                    run_time,
+                ),
+            )
+
+        windows = plan_incremental(
+            config,
+            run_time,
+        )
+
+        raw, failed = extract_windows(
+            config,
+            windows,
+            archive=False,
+        )
+
+        return (
+            raw,
+            failed,
+            expected_window_hours(windows),
+        )
+
+    return _execute(
+        config,
+        acquire,
+        FORECAST_SOURCE,
+        run_time,
+        incremental=incremental,
+    )
+
+
+def backfill(
+    config: dict,
+    *,
+    days: int | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> int:
+    """Load historical archive data using the shared pipeline."""
+
+    run_time = datetime.now(timezone.utc)
+
+    start, end = resolve_backfill_dates(
+        config,
+        run_time,
+        days=days,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    # Extend the date dimension when older history is requested.
+    # Do not modify the original configuration or shrink its range.
+    config = deepcopy(config)
+
+    existing_start = date.fromisoformat(
+        str(config["dim_date"]["start"])
+    )
+
+    existing_end = date.fromisoformat(
+        str(config["dim_date"]["end"])
+    )
+
+    config["dim_date"]["start"] = min(
+        existing_start,
+        start,
+    ).isoformat()
+
+    config["dim_date"]["end"] = max(
+        existing_end,
+        end + timedelta(days=1),
+    ).isoformat()
+
+    logger.info(
+        "Backfill requested: start=%s end=%s days=%s",
+        start,
+        end,
+        (end - start).days + 1,
+    )
+
+    def acquire():
+
+        windows = plan_backfill(
+            config,
+            start,
+            end,
+        )
+
+        logger.info(
+            "Historical request windows: %s",
+            len(windows),
+        )
+
+        raw, failed = extract_windows(
+            config,
+            windows,
+            archive=True,
+        )
+
+        return (
+            raw,
+            failed,
+            expected_window_hours(windows),
+        )
+
+    return _execute(
+        config,
+        acquire,
+        ARCHIVE_SOURCE,
+        run_time,
+        incremental=False,
+    )
