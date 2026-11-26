@@ -1059,3 +1059,102 @@ historical and forecast records.
 
 Generated raw files, processed data, quarantine records,
 databases, coverage files and logs are excluded from Git.
+
+#### Task 2.6 — Measured Acceptance Results
+
+Validation date: 26 November 2026.
+
+##### Automated Testing
+
+| Metric | Result |
+|---|---|
+| Automated tests | 73/73 passed |
+| Existing tests retained | 62 |
+| New tests | 11 |
+| Execution time | 2.43 seconds |
+| Total executable statements | 644 |
+| Covered statements | 596 |
+| Missed statements | 48 |
+| Overall statement coverage | 92.55% |
+| Required minimum coverage | 70% |
+| Watermark module coverage | 94% |
+| Pipeline module coverage | 99% |
+
+Coverage output:
+
+```text
+TOTAL                               644     48    93%
+Required test coverage of 70% reached.
+Total coverage: 92.55%
+73 passed in 2.43s
+```
+
+##### Historical Backfill Results
+
+| Metric | Result |
+|---|---|
+| Historical start date | 2026-10-23 |
+| Historical end date | 2026-11-21 |
+| Historical days | 30 |
+| Configured cities | 5 |
+| Chunks per city | 5 |
+| Successful requests per run | 25 |
+| Failed requests per run | 0 |
+| Expected archive records | 3600 |
+| Actual archive records | 3600 |
+| Valid record rate | 100% |
+| Quarantined records | 0 |
+
+Each city contained exactly 720 hourly observations.
+
+##### Historical Idempotency
+
+| Metric | First run | Second run |
+|---|---:|---:|
+| Input records | 3600 | 3600 |
+| New archive records | 3600 | 0 |
+| Updated archive records | 0 | 3600 |
+| Archive fact records | 3600 | 3600 |
+| Forecast fact records | 240 | 240 |
+| Total fact records | 3840 | 3840 |
+| Duplicate keys | 0 | 0 |
+| Foreign key violations | 0 | 0 |
+
+The database snapshot comparison returned exit code 0.
+
+Both historical snapshots were identical.
+
+Database integrity: ok.
+
+##### Incremental Loading Results
+
+| Metric | First run | Second run |
+|---|---:|---:|
+| Watermark UTC | 2026-11-26 23:00 | 2026-11-26 23:00 |
+| Request start UTC | 2026-11-26 21:00 | 2026-11-26 21:00 |
+| Request end UTC | 2026-11-26 23:00 | 2026-11-26 23:00 |
+| Overlap hours | 2 | 2 |
+| Input records | 15 | 15 |
+| Valid records | 15 | 15 |
+| Quarantined records | 0 | 0 |
+| New records | 0 | 0 |
+| Updated records | 15 | 15 |
+| Freshness check | PASS | PASS |
+
+The demonstrated incremental request retrieved 15
+records instead of the original 240-record full window.
+
+This represents a 93.75% reduction in extracted records
+for the demonstrated request interval.
+
+The reduction varies with the watermark and forecast horizon.
+
+Historical and incremental loads successfully reused the
+same transformation, validation and loading functions.
+
+##### Peer Code Review
+
+Technical acceptance criteria have been satisfied.
+
+Peer review remains pending until a review exchange
+has been completed and received feedback addressed.
