@@ -133,3 +133,85 @@ The dataset does not contain continuous hourly observations across the entire da
 - The final SQLite schema differs from the exploratory dataset used in the Week 1 Jupyter notebook.
 - Dataset size and observation coverage change as additional pipeline executions are completed.
 - Nullable indicates whether the database schema permits missing values; it does not indicate that missing values are currently present.
+
+## Week 2 — Enriched Weather Records (Task 2.2)
+
+The processed Parquet dataset contains 19 columns:
+the original 10 weather fields and nine additional fields.
+
+| Column | Type | Unit | Definition |
+|---|---|---|---|
+| latitude | Float | Degrees | API latitude |
+| longitude | Float | Degrees | API longitude |
+| weather_description | String | N/A | Description from WMO lookup |
+| weather_category | String | N/A | Category from WMO lookup |
+| temperature_f | Float | °F | temperature_c * 9 / 5 + 32 |
+| wind_speed_ms | Float | m/s | wind_speed_kmh / 3.6 |
+| beaufort_scale | Nullable integer | 0-12 | Wind force derived from wind_speed_ms |
+| is_daylight | Nullable Boolean | N/A | True when is_day=1, False when is_day=0 |
+| outdoor_work_risk | String | N/A | Low, medium or high based on business rules |
+
+### Beaufort Scale
+
+Lower boundaries are inclusive.
+
+| Beaufort force | Minimum wind speed (m/s) |
+|---:|---:|
+| 0 | 0.0 |
+| 1 | 0.3 |
+| 2 | 1.6 |
+| 3 | 3.4 |
+| 4 | 5.5 |
+| 5 | 8.0 |
+| 6 | 10.8 |
+| 7 | 13.9 |
+| 8 | 17.2 |
+| 9 | 20.8 |
+| 10 | 24.5 |
+| 11 | 28.5 |
+| 12 | 32.7 |
+
+Negative or missing wind speeds produce a null Beaufort value.
+
+### Outdoor Work Risk
+
+High-risk conditions take priority over medium-risk conditions.
+
+- High: Beaufort >= 7, weather category is storm or snow,
+  or precipitation >= 4 mm.
+- Medium: Beaufort >= 5, precipitation >= 1 mm,
+  or temperature <= 0 degrees Celsius,
+  provided no high-risk condition applies.
+- Low: none of the above conditions applies.
+
+These are programme-defined business classification rules.
+Formal data quality validation will be added in Task 2.4.
+
+### Weather Code Reference
+
+Weather codes are mapped using:
+src/weatherflow/reference/wmo_codes.csv
+
+Unrecognised weather codes receive the description and category
+"unknown". Missing daylight information remains null.
+
+### Processed Data Storage
+
+Partitioned Parquet output:
+data/processed/weather_hourly/run_date=YYYY-MM-DD/
+
+The partition date is based on the UTC pipeline run date.
+
+The existing SQLite schema remains unchanged until Task 2.3.
+
+### Storage Validation
+
+Validated on 25 November 2026 using 240 rows and 19 columns.
+
+| Format | Size in bytes |
+|---|---:|
+| CSV | 44,386 |
+| Parquet (Snappy) | 16,395 |
+
+Storage reduction: 63.06%.
+Bytes saved: 27,991.

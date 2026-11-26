@@ -570,3 +570,66 @@ Pipeline settings are stored in `config.yaml`, including API endpoints, city coo
 - Nine passing automated configuration and retry tests.
 
 The original Week 1 scripts and database are retained for historical reference.
+
+#### Task 2.2 Validation Results
+
+Validation date: 25 November 2026.
+
+| Validation metric | Result |
+|---|---|
+| Automated tests | 34 passed |
+| Pipeline exit code | 0 |
+| Processed records | 240 |
+| Processed columns | 19 |
+| Cities | 5 |
+| Records per city | 48 |
+| Duplicate records | 0 |
+| Missing daylight values | 0 |
+| Low outdoor work risk | 236 |
+| Medium outdoor work risk | 4 |
+| High outdoor work risk | 0 |
+| Daylight records | 84 |
+| Nighttime records | 156 |
+
+#### CSV vs Parquet Comparison
+
+The same 240-row, 19-column dataset was stored in both formats.
+
+| File format | Size in bytes |
+|---|---:|
+| CSV | 44,386 |
+| Parquet (Snappy compression) | 16,395 |
+
+Parquet reduced storage size by 63.06%, saving 27,991 bytes.
+
+Parquet also preserves column data types and supports efficient
+column-level reading for analytical workloads.
+
+The measured storage reduction applies to this particular dataset.
+
+### Task 2.2 — Implementation Overview
+
+The transformation layer consists of five independently
+testable functions:
+
+- flatten_payload
+- standardise_columns
+- add_weather_description
+- add_derived_metrics
+- deduplicate
+
+Derived metrics include Fahrenheit temperature, wind speed
+in metres per second, Beaufort scale, daylight status and
+outdoor work risk.
+
+Weather descriptions are mapped using the WMO reference CSV.
+
+Processed Parquet files are stored under:
+
+data/processed/weather_hourly/run_date=YYYY-MM-DD/
+
+The storage module handles reference data loading and
+Parquet writing separately from the pure transformations.
+
+Metric definitions and formulas are documented in
+docs/data_dictionary.md.
