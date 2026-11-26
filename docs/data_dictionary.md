@@ -215,3 +215,38 @@ Validated on 25 November 2026 using 240 rows and 19 columns.
 
 Storage reduction: 63.06%.
 Bytes saved: 27,991.
+
+## Week 2 — Dimensional Model (Task 2.3)
+
+| Column | Table | Type | Definition |
+|---|---|---|---|
+| city_id | dim_city | Integer | Surrogate primary key assigned to each city |
+| city_name | dim_city | String | Unique city name |
+| country | dim_city | String | Configured country |
+| date_id | dim_date | Integer | Calendar date in YYYYMMDD format |
+| full_date | dim_date | String | Calendar date in YYYY-MM-DD format |
+| day_of_week | dim_date | String | Calendar weekday name |
+| is_weekend | dim_date | Integer | 1 for Saturday or Sunday; otherwise 0 |
+| day_of_month | dim_date | Integer | Day number within the month |
+| month | dim_date | Integer | Calendar month from 1 to 12 |
+| year | dim_date | Integer | Calendar year |
+| quarter | dim_date | Integer | Calendar quarter from 1 to 4 |
+| city_id | fact_weather_hourly | Integer | Foreign key referencing dim_city |
+| date_id | fact_weather_hourly | Integer | Local UK date referencing dim_date |
+| hour_local | fact_weather_hourly | Integer | UK local observation hour from 0 to 23 |
+| source | fact_weather_hourly | String | Weather data source identifier |
+
+Current source: open_meteo_forecast.
+
+Historical source open_meteo_archive will be introduced
+in Task 2.6.
+
+SQLite stores daylight Boolean values as integers:
+1 for daylight, 0 for nighttime, and NULL when unavailable.
+
+The composite fact primary key consists of city_id,
+observed_at_utc and source.
+
+Grain: one row per city, per hour, per source.
+
+See docs/erd.md for the complete dimensional model.

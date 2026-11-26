@@ -633,3 +633,99 @@ Parquet writing separately from the pure transformations.
 
 Metric definitions and formulas are documented in
 docs/data_dictionary.md.
+
+### Task 2.3 — Star Schema and Idempotent Load
+
+WeatherFlow now uses a dimensional database model consisting
+of three tables:
+
+- dim_city
+- dim_date
+- fact_weather_hourly
+
+Grain: one row per city, per hour, per source.
+
+The fact table uses a composite primary key and foreign keys
+to maintain uniqueness and referential integrity.
+
+All enriched weather metrics are stored in the fact table.
+
+The date dimension uses the Europe/London local calendar date.
+
+Database loads use transactional upserts to prevent duplicates
+and roll back all database changes if an error occurs.
+
+The city metadata, date dimension range and schema location
+are configured in config.yaml.
+
+Database schema:
+
+sql/schema.sql
+
+Entity Relationship Diagram:
+
+docs/erd.md
+
+Analytical SQL queries:
+
+sql/analysis_queries.sql
+
+Run the pipeline:
+
+```bash
+python -m weatherflow run
+```
+
+Run automated tests:
+
+```bash
+python -m pytest tests/ -v
+```
+
+The original weather_hourly table is preserved for historical
+reference. New records are loaded into fact_weather_hourly.
+
+#### Task 2.3 Validation Results
+
+Validation date: 26 November 2026.
+
+| Validation metric | Result |
+|---|---|
+| Automated tests | 41/41 passed |
+| Test execution time | 0.91 seconds |
+| Live pipeline run 1 | 240 fact records |
+| Live pipeline run 2 | 240 fact records |
+| Live pipeline run 3 | 240 fact records |
+| City dimension records | 5 |
+| Date dimension records | 1,095 |
+| Duplicate fact keys | 0 |
+| Foreign key violations | 0 |
+| Database integrity | ok |
+| Preserved legacy records | 240 |
+| Transaction rollback test | Passed |
+| Separate weather sources test | Passed |
+| UK local calendar date test | Passed |
+| Analytical SQL queries | 5/5 passed |
+
+All three live pipeline executions maintained identical
+fact row counts, demonstrating record-count idempotency.
+
+Atomicity was verified by forcing a constraint violation
+after successful writes in a temporary database.
+All preceding fact and dimension changes were rolled back.
+
+#### Analytical Query Results
+
+| Query | Result rows |
+|---|---:|
+| Record counts by city | 5 |
+| Yesterday's average temperature | 5 |
+| Five windiest hours | 5 |
+| Weekday versus weekend wind speed | 5 |
+| Outdoor work risk by city and date | 10 |
+
+The observation window covers 25-26 November 2026.
+
+Query 4 currently returns weekday observations only.
+Weekend comparisons will become available when historical
+data is loaded during Task 2.6.
