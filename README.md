@@ -953,3 +953,208 @@ the internet connection disconnected.
 All 62 tests passed with 92.75% source code coverage,
 demonstrating that the automated tests do not depend
 on access to the external weather API.
+
+### Task 2.6 — Backfill and Incremental Loading
+
+WeatherFlow supports historical weather backfills and
+watermark-based incremental forecast extraction.
+
+#### Historical Backfill
+
+Load thirty days of historical weather data:
+
+```bash
+python -m weatherflow backfill --days 30
+```
+
+The default end date is five days before the current
+UTC date to accommodate historical data availability.
+
+Explicit historical dates can also be requested:
+
+```bash
+python -m weatherflow backfill --start-date 2026-10-23 --end-date 2026-11-21
+```
+
+Historical requests are divided into seven-day,
+non-overlapping chunks for each configured city.
+
+Raw JSON responses are retained for reproducibility
+and future historical reprocessing.
+
+Historical facts use the source open_meteo_archive.
+
+#### Incremental Forecast Loading
+
+```bash
+python -m weatherflow run
+```
+
+The latest loaded non-future observation is used as
+the high-water mark for each city and source.
+
+A configurable two-hour overlap allows late
+corrections to be incorporated through database upserts.
+
+Future forecast hours are refreshed during every run.
+
+Cities without an existing forecast watermark use
+the configured one-day historical fallback.
+
+Forecast facts use the source open_meteo_forecast.
+
+The original full-window mode remains available:
+
+```bash
+python -m weatherflow run --full
+```
+
+#### Shared Processing Architecture
+
+Historical and forecast extraction use shared API retry logic.
+
+Both modes reuse the same transformation, validation,
+quarantine, processed storage and transactional database
+loading functions.
+
+Expected hourly coverage is calculated from planned
+request windows rather than received response timestamps.
+
+Records outside the requested observation window
+trigger a blocking data quality failure.
+
+Incremental forecast runs evaluate observation freshness.
+
+Historical backfills skip the incremental freshness check.
+
+New and updated fact keys are counted and logged
+before and after successful database loading.
+
+Historical and forecast records remain distinguishable
+through the composite fact primary key:
+
+city_id, observed_at_utc, source
+
+#### Automated Testing
+
+```bash
+python -m pytest tests/ --cov=src --cov-report=term-missing --cov-fail-under=70
+```
+
+Tests cover historical date calculations, seven-day
+chunking, watermark isolation, exclusion of future
+forecast hours, incremental overlap, fallback behaviour,
+API request parameters, archive idempotency and
+blocking extraction failures.
+
+#### Known Limitations
+
+Historical availability depends on the external API.
+
+New-versus-updated counts assume one pipeline writer
+at a time.
+
+The archive availability lag may leave a gap between
+historical and forecast records.
+
+Generated raw files, processed data, quarantine records,
+databases, coverage files and logs are excluded from Git.
+
+#### Task 2.6 — Measured Acceptance Results
+
+Validation date: 26 November 2026.
+
+##### Automated Testing
+
+| Metric | Result |
+|---|---|
+| Automated tests | 73/73 passed |
+| Existing tests retained | 62 |
+| New tests | 11 |
+| Execution time | 2.43 seconds |
+| Total executable statements | 644 |
+| Covered statements | 596 |
+| Missed statements | 48 |
+| Overall statement coverage | 92.55% |
+| Required minimum coverage | 70% |
+| Watermark module coverage | 94% |
+| Pipeline module coverage | 99% |
+
+Coverage output:
+
+```text
+TOTAL                               644     48    93%
+Required test coverage of 70% reached.
+Total coverage: 92.55%
+73 passed in 2.43s
+```
+
+##### Historical Backfill Results
+
+| Metric | Result |
+|---|---|
+| Historical start date | 2026-10-23 |
+| Historical end date | 2026-11-21 |
+| Historical days | 30 |
+| Configured cities | 5 |
+| Chunks per city | 5 |
+| Successful requests per run | 25 |
+| Failed requests per run | 0 |
+| Expected archive records | 3600 |
+| Actual archive records | 3600 |
+| Valid record rate | 100% |
+| Quarantined records | 0 |
+
+Each city contained exactly 720 hourly observations.
+
+##### Historical Idempotency
+
+| Metric | First run | Second run |
+|---|---:|---:|
+| Input records | 3600 | 3600 |
+| New archive records | 3600 | 0 |
+| Updated archive records | 0 | 3600 |
+| Archive fact records | 3600 | 3600 |
+| Forecast fact records | 240 | 240 |
+| Total fact records | 3840 | 3840 |
+| Duplicate keys | 0 | 0 |
+| Foreign key violations | 0 | 0 |
+
+The database snapshot comparison returned exit code 0.
+
+Both historical snapshots were identical.
+
+Database integrity: ok.
+
+##### Incremental Loading Results
+
+| Metric | First run | Second run |
+|---|---:|---:|
+| Watermark UTC | 2026-11-26 23:00 | 2026-11-26 23:00 |
+| Request start UTC | 2026-11-26 21:00 | 2026-11-26 21:00 |
+| Request end UTC | 2026-11-26 23:00 | 2026-11-26 23:00 |
+| Overlap hours | 2 | 2 |
+| Input records | 15 | 15 |
+| Valid records | 15 | 15 |
+| Quarantined records | 0 | 0 |
+| New records | 0 | 0 |
+| Updated records | 15 | 15 |
+| Freshness check | PASS | PASS |
+
+The demonstrated incremental request retrieved 15
+records instead of the original 240-record full window.
+
+This represents a 93.75% reduction in extracted records
+for the demonstrated request interval.
+
+The reduction varies with the watermark and forecast horizon.
+
+Historical and incremental loads successfully reused the
+same transformation, validation and loading functions.
+
+##### Peer Code Review
+
+Technical acceptance criteria have been satisfied.
+
+Peer review remains pending until a review exchange
+has been completed and received feedback addressed.

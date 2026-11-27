@@ -381,7 +381,7 @@ def test_pipeline_quarantines_99c_and_loads_valid_rows(
         ),
     )
 
-    assert run(dq_config) == 0
+    assert run(dq_config, incremental=False) == 0
 
     quarantine_files = list(
         dq_config["paths"]["quarantine_dir"]
@@ -482,7 +482,7 @@ def test_pipeline_duplicate_blocks_database_load(
         mocked_load,
     )
 
-    assert run(dq_config) == 1
+    assert run(dq_config, incremental=False) == 1
 
     mocked_load.assert_not_called()
 
@@ -545,7 +545,7 @@ def test_failed_extraction_produces_report(
         mocked_load,
     )
 
-    assert run(dq_config) == 1
+    assert run(dq_config, incremental=False) == 1
 
     mocked_load.assert_not_called()
 

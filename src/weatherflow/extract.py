@@ -22,12 +22,28 @@ def fetch_city(city: dict, api: dict) -> dict:
         "timezone": api["timezone"],
     }
 
+    return _request_json(
+        api["forecast_url"],
+        params,
+        api,
+        city["name"],
+    )
+
+
+def _request_json(
+    url: str,
+    params: dict,
+    api: dict,
+    city_name: str,
+) -> dict:
+    """Request JSON using the shared transient retry policy."""
+
     max_retries = api["max_retries"]
 
     for attempt in range(max_retries + 1):
         try:
             response = requests.get(
-                api["forecast_url"],
+                url,
                 params=params,
                 timeout=api["timeout_seconds"],
             )
@@ -56,7 +72,7 @@ def fetch_city(city: dict, api: dict) -> dict:
 
             logger.warning(
                 "%s: request attempt %s failed (%s); retrying in %s seconds",
-                city["name"],
+                city_name,
                 attempt + 1,
                 last_error,
                 wait,
@@ -65,6 +81,48 @@ def fetch_city(city: dict, api: dict) -> dict:
             time.sleep(wait)
 
     raise last_error
+
+
+
+def fetch_window(
+    city: dict,
+    api: dict,
+    start,
+    end,
+    *,
+    archive: bool = False,
+) -> dict:
+    """Fetch an explicit inclusive UTC observation window."""
+
+    params = {
+        "latitude": city["latitude"],
+        "longitude": city["longitude"],
+        "hourly": ",".join(api["hourly_variables"]),
+        "timezone": "UTC",
+    }
+
+    if archive:
+        url = api["archive_url"]
+
+        params.update({
+            "start_date": start.strftime("%Y-%m-%d"),
+            "end_date": end.strftime("%Y-%m-%d"),
+        })
+
+    else:
+        url = api["forecast_url"]
+
+        params.update({
+            "start_hour": start.strftime("%Y-%m-%dT%H:%M"),
+            "end_hour": end.strftime("%Y-%m-%dT%H:%M"),
+        })
+
+    return _request_json(
+        url,
+        params,
+        api,
+        city["name"],
+    )
 
 
 def save_raw(city_name: str, payload: dict, raw_dir: Path) -> Path:

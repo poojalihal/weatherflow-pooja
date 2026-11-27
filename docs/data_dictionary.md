@@ -280,3 +280,31 @@ record only once.
 
 The data quality report records check outcomes and pipeline
 loading results for each execution.
+
+## Week 2 — Historical and Incremental Loading (Task 2.6)
+
+| Field | Definition |
+|---|---|
+| source | Weather data origin |
+| observed_at_utc | UTC observation timestamp used in fact identity and watermark calculation |
+| ingested_at_utc | UTC timestamp of the pipeline ingestion run |
+
+Supported source values:
+
+- open_meteo_forecast: operational forecast API records.
+- open_meteo_archive: historical weather API records.
+
+The fact grain remains one row per city, per UTC hour,
+per source.
+
+The high-water mark is calculated separately for each
+city and source using the maximum loaded observation
+timestamp that is not later than the current UTC time.
+
+Future forecast hours do not advance the watermark.
+
+Historical and forecast records can exist for the same
+city and timestamp because their sources differ.
+
+The incremental extraction window includes a configurable
+overlap to capture corrected measurements.
