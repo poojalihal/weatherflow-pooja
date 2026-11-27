@@ -4,7 +4,7 @@
 
 **Initial assessment:** 23 November 2026
 
-**Last updated:** 24 November 2026
+**Last updated:** 27 November 2026
 
 **Self-assessment scale:**
 - Beginner — Learning the fundamentals and requiring guidance.
@@ -123,3 +123,168 @@ Although I have gained practical experience with these concepts, I still need fu
 8. Improve data visualisation and analytical findings.
 9. Become more confident debugging and implementing data engineering solutions independently.
 10. Maintain accurate technical documentation as the project evolves.
+
+---
+
+## Week 2 — Reliable Data Engineering and Testing
+
+**Assessment date:** 27 November 2026
+
+The original self-assessment scale remains unchanged:
+
+- Beginner — Learning the fundamentals and requiring guidance.
+- Developing — Able to complete basic tasks with occasional guidance.
+- Confident — Able to complete tasks independently.
+
+The assessments below reflect practical experience gained
+through WeatherFlow. I continue to need guidance for some
+complex implementations.
+
+### Core Programming and Development Skills
+
+| Skill | Current Level | Evidence of Learning | Next Steps |
+|---|---|---|---|
+| Python | Developing | Implemented reusable functions, exceptions, data classes and type hints. | Write more functions independently. |
+| Modular Programming | Developing | Refactored WeatherFlow into a reusable Python package. | Improve module design and separation of responsibilities. |
+| Configuration Management | Developing | Centralised API settings, paths, thresholds and loading options in YAML. | Explore environment-specific configuration and validation. |
+| Git and GitHub | Developing | Created feature branches, meaningful commits and pull requests. | Improve independent branching, conflict resolution and collaboration. |
+| Command-Line Interfaces | Developing | Implemented run, backfill and date-range arguments using argparse. | Add automated CLI tests. |
+| Virtual Environments | Developing | Used isolated runtime and development dependencies and editable installation. | Practise reproducible installations on different platforms. |
+| Debugging | Developing | Investigated Git synchronisation, API and database failure scenarios. | Improve independent root-cause analysis. |
+| Technical Documentation | Developing | Maintained README, data dictionary, ERD and measured acceptance evidence. | Improve concise and consistent documentation. |
+
+### Data Extraction and Pipeline Engineering
+
+| Skill | Current Level | Evidence of Learning | Next Steps |
+|---|---|---|---|
+| REST APIs | Developing | Retrieved forecast and archive weather responses using configurable requests. | Explore pagination, authentication and API limits. |
+| API Resilience | Developing | Reused timeout handling, retries and exponential backoff. | Practise rate-limit handling and recovery strategies. |
+| Structured Logging | Developing | Logged extraction windows, quality results and loading statistics. | Explore monitoring, alerting and log rotation. |
+| ETL Pipelines | Developing | Implemented shared extraction, transformation, validation and loading workflows. | Explore workflow orchestration and scheduling. |
+| Historical Backfill | Developing | Loaded 3600 historical records using seven-day request chunks. | Practise large-volume and selective historical reprocessing. |
+| Incremental Loading | Developing | Implemented watermark-based extraction with a two-hour overlap. | Explore late-arriving data and recovery after longer outages. |
+| Watermark Logic | Developing | Excluded future forecast observations and separated watermarks by city and source. | Practise watermark logic in other data sources. |
+| Raw Data Persistence | Developing | Preserved original API responses and tested overwrite protection. | Implement a reusable historical replay workflow. |
+
+### Transformation and Storage Skills
+
+| Skill | Current Level | Evidence of Learning | Next Steps |
+|---|---|---|---|
+| Pandas | Developing | Flattened, standardised, enriched and validated structured weather records. | Practise more complex transformations and performance optimisation. |
+| Timezone-Aware Processing | Developing | Stored UTC timestamps and derived Europe/London local times. | Explore additional daylight saving time edge cases. |
+| Derived Metrics | Developing | Implemented temperature conversion, Beaufort scale and outdoor work risk. | Practise business-rule design and metric validation. |
+| Reference Data | Developing | Enriched weather codes using a reusable CSV lookup. | Explore reference data versioning. |
+| Parquet and Compression | Developing | Implemented compressed Parquet output with date partitions. | Explore partition pruning and storage optimisation. |
+
+### Database and Data Modelling Skills
+
+| Skill | Current Level | Evidence of Learning | Next Steps |
+|---|---|---|---|
+| SQL and SQLite | Developing | Created analytical SQL queries, joins and aggregations. | Practise window functions and complex queries. |
+| Dimensional Modelling | Developing | Implemented city and date dimensions with an hourly weather fact table. | Explore slowly changing dimensions. |
+| Entity Relationship Diagrams | Developing | Documented the WeatherFlow star schema in Mermaid. | Practise designing additional relational models. |
+| Database Constraints | Developing | Implemented primary keys, foreign keys and CHECK constraints. | Explore database design and indexing strategies. |
+| Transaction Management | Developing | Verified rollback following deliberately invalid loads. | Learn more about transaction isolation. |
+| Idempotent Loading | Developing | Repeated historical and forecast loads without duplicate facts. | Explore idempotency in distributed data systems. |
+| Database Integrity | Developing | Verified zero duplicate keys, zero foreign-key violations and successful integrity checks. | Automate integrity monitoring. |
+
+### Data Quality Skills
+
+| Skill | Current Level | Evidence of Learning | Next Steps |
+|---|---|---|---|
+| Automated Data Quality Validation | Developing | Implemented eight required rules and two supplementary pipeline checks. | Explore reusable validation frameworks. |
+| Data Completeness | Developing | Verified every expected UTC hour for each configured city. | Explore missing-window recovery. |
+| Data Validity | Developing | Implemented configurable measurement thresholds. | Practise additional schema and business-rule checks. |
+| Data Uniqueness | Developing | Detected duplicate observation keys before loading. | Explore entity-level duplication and reconciliation. |
+| Data Timeliness | Developing | Implemented and tested freshness checks for incremental runs. | Integrate freshness monitoring with alerting. |
+| Data Consistency | Developing | Implemented actual versus feels-like temperature checks. | Explore cross-field and cross-source validation. |
+| Quarantine Handling | Developing | Isolated invalid records with recorded failure reasons. | Develop quarantine investigation and reprocessing workflows. |
+| Quality Reporting | Developing | Generated Markdown DQ reports with check outcomes and record counts. | Explore data quality dashboards and automated alerts. |
+| Failure Handling | Developing | Blocked incomplete or duplicate datasets before database loading. | Explore automated recovery and operational alerting. |
+
+### Automated Testing Skills
+
+| Skill | Current Level | Evidence of Learning | Next Steps |
+|---|---|---|---|
+| Pytest | Developing | Developed a suite of 73 passing automated tests. | Write new tests more independently. |
+| Unit Testing | Developing | Tested individual extraction, transformation and validation functions. | Improve boundary and exceptional-condition testing. |
+| Integration Testing | Developing | Verified real SQLite, Parquet and shared pipeline operations. | Explore larger end-to-end scenarios. |
+| Mock Testing | Developing | Simulated HTTP 503, HTTP 404, connection failures and successful responses. | Practise mocking additional external dependencies. |
+| Pytest Fixtures | Developing | Created shared fixtures from genuine API response data. | Develop reusable fixture factories. |
+| Parametrised Testing | Developing | Tested outdoor work risk and validation rule boundaries. | Practise broader boundary coverage. |
+| Test Isolation | Developing | Used temporary directories and disposable databases. | Explore isolated CI testing environments. |
+| Code Coverage | Developing | Achieved 92.55% overall statement coverage after Task 2.6. | Add CLI tests and investigate uncovered branches. |
+| Offline Testing | Developing | Verified that the Task 2.5 test suite runs without internet access. | Maintain independent and deterministic test suites. |
+
+### Collaboration and Professional Development
+
+| Skill | Current Level | Evidence of Learning | Next Steps |
+|---|---|---|---|
+| Pull Requests | Developing | Created and merged PRs #4 to #8 and opened PR #9. | Continue reviewing smaller changes before merging. |
+| Self-Review | Developing | Used Git diff and acceptance evidence to inspect changes. | Improve independent code review techniques. |
+| Peer Code Review | Beginner | Identified my assigned review partner and opened PR #9. | Complete the review exchange and address feedback. |
+| Continuous Integration | Beginner | Used reproducible local automated test and coverage commands. | Learn to configure automated CI checks. |
+
+## Week 2 Testing Progress
+
+| Task | Cumulative Passing Tests |
+|---|---:|
+| 2.1 | 9 |
+| 2.2 | 34 |
+| 2.3 | 41 |
+| 2.4 | 56 |
+| 2.5 | 62 |
+| 2.6 | 73 |
+
+## Week 2 Reflection on Skills Development
+
+During Week 2, I moved beyond basic ETL processing and
+developed practical experience in modular programming,
+dimensional modelling, automated testing, data quality
+validation, historical backfill and incremental loading.
+
+My professional Data Quality Analyst experience helped me
+understand the importance of reliable validation,
+traceability and consistent quality reporting.
+
+The main improvement in my technical skills was learning
+how to incorporate these principles into an automated
+data engineering pipeline.
+
+I gained experience with concepts that were new to me,
+including transactional upserts, pytest fixtures,
+API mocking, Parquet storage and watermark calculations.
+
+Although the project has achieved strong technical
+results, I recognise that completing guided
+implementations is not the same as being able to
+implement every concept independently.
+
+I will continue practising these skills to develop
+greater technical confidence.
+
+## Week 2 Measured Evidence
+
+- 73 passing automated tests.
+- 92.55% overall statement coverage.
+- 3600 historical archive records across five cities.
+- 3840 total fact records.
+- Zero duplicate fact keys.
+- Zero foreign-key violations.
+- Successful database integrity verification.
+- Historical reruns maintained unchanged fact counts.
+- Incremental requests reduced extraction volume by
+  93.75% for the demonstrated request interval.
+- Ten data quality checks in the Task 2.6 pipeline.
+- Five merged Week 2 technical pull requests.
+- Pull Request #9 open with peer review pending.
+
+## Goals for Week 3
+
+1. Improve independent Python development and debugging.
+2. Strengthen SQL and analytical querying skills.
+3. Explore scheduling, orchestration and monitoring.
+4. Improve command-line test coverage.
+5. Learn more about continuous integration.
+6. Complete the outstanding peer-review exchange.
+7. Maintain reliable data quality and technical documentation.
