@@ -1186,26 +1186,81 @@ container is recreated.
 Do not use docker compose down -v unless you intentionally
 want to delete the warehouse data.
 
-### Pipeline execution
+### Pipeline execution with Docker
 
-When DATABASE_URL is configured, the CLI selects PostgreSQL.
-Without DATABASE_URL, the existing SQLite backend is used.
+Docker Desktop must be running.
 
-On a Python environment with working Psycopg dependencies:
+If .env does not exist, create it from the template:
 
-    python -m pip install -r requirements-dev.txt
-    python -m pip install -e .
-    python -m weatherflow backfill --days 7
-    python -m weatherflow run
+    cp .env.example .env
 
-On this project's Windows development machine, native
-Psycopg execution is restricted by Application Control.
+Replace the example database password with a strong,
+URL-safe password and update DATABASE_URL to match.
+Never commit .env.
 
-PostgreSQL-dependent operations therefore use a temporary
-Linux development image and the wfdev shell helper.
+Build and start the services:
 
-Task 3.3 will provide the permanent Dockerfile and Compose
-pipeline service for reproducible execution.
+    docker compose build pipeline
+    docker compose up -d --wait warehouse
+
+Run the pipeline:
+
+    docker compose run --rm pipeline run
+
+Load seven days of historical data:
+
+    docker compose run --rm pipeline backfill --days 7
+
+The pipeline connects to PostgreSQL at warehouse:5432
+inside the Compose network.
+
+From the host, PostgreSQL is available at localhost:5433.
+
+The pipeline runs as a non-root user with UID 1000.
+Generated files are retained in these mounted directories:
+
+- data/raw/
+- data/processed/
+- data/quarantine/
+- logs/
+- docs/dq_reports/
+
+Normal Docker execution does not require a local Python
+virtual environment or the temporary wfdev helper.
+
+### Troubleshooting directory permissions
+
+Existing directories created by a root-based development
+container may not be writable by the non-root pipeline.
+
+If a PermissionError occurs, inspect the affected directory
+ownership and correct only the generated directories as needed.
+
+For the existing raw, processed and quarantine directories:
+
+    docker compose run --rm -T --no-deps --user 0:0 --entrypoint sh pipeline -c 'find /app/data/raw /app/data/processed /app/data/quarantine -type d -exec chown 1000:1000 {} +'
+
+Do not permanently run the pipeline as root.
+On Linux, bind-mounted directories must allow writes
+by the container user.
+
+### Verified Task 3.3 results
+
+- Fresh-clone Docker build passed.
+- Non-root execution verified.
+- Image secret exclusion verified.
+- 76 regression tests passed.
+- Overall coverage: 91.70%.
+- Two containerised runs retained 3840 fact records.
+- Invalid date range returned exit code 1.
+
+The WeatherAPI missing-key acceptance test is deferred
+until Task 3.1.
+
+Additional documentation:
+
+- [Task 3.3 acceptance evidence](docs/task_3_3_acceptance.md)
+- [ADR 0002: Containerise the pipeline](docs/adr/0002-containerise-pipeline.md)
 
 ### PostgreSQL analytical queries
 
