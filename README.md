@@ -1,5 +1,8 @@
 # WeatherFlow – Data Engineering Project
 
+[![CI](https://github.com/poojalihal/weatherflow-pooja/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/poojalihal/weatherflow-pooja/actions/workflows/ci.yml)
+
+
 ## Project Overview
 
 WeatherFlow is a data engineering project that collects weather data for five UK cities using the Open-Meteo API.
