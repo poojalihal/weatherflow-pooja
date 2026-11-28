@@ -54,6 +54,11 @@ def main() -> int:
         help="Historical end date, YYYY-MM-DD",
     )
 
+    subparsers.add_parser(
+        "alerts",
+        help="Generate deduplicated weather risk alerts",
+    )
+
     args = parser.parse_args()
 
     try:
@@ -90,6 +95,10 @@ def main() -> int:
                 config,
                 incremental=not args.full,
             )
+
+        if args.command == "alerts":
+            from .alerts import run_alerts
+            return run_alerts(config)
 
         if args.command == "backfill":
 

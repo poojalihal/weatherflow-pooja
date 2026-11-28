@@ -33,5 +33,21 @@ services:
       - ./logs:/app/logs
       - ./docs/dq_reports:/app/docs/dq_reports
 
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    image: weatherflow-dashboard:local
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@warehouse:5432/${POSTGRES_DB}
+    depends_on:
+      warehouse:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8501:8501"
+    volumes:
+      - ./docs/dq_reports:/app/docs/dq_reports:ro
+    restart: unless-stopped
+
 volumes:
   pgdata:

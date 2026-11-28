@@ -1285,3 +1285,54 @@ Additional documentation:
 - [Task 3.2 acceptance evidence](docs/task_3_2_acceptance.md)
 - [ADR 0001: PostgreSQL warehouse](docs/adr/0001-postgresql-warehouse.md)
 - [PostgreSQL schema](sql/schema_postgres.sql)
+
+## Week 3: WeatherFlow dashboard and alerts
+
+### Start the dashboard
+
+    docker compose build dashboard
+    docker compose up -d dashboard
+
+Open http://localhost:8501 in a browser.
+
+The dashboard reads PostgreSQL and displays outdoor work
+risk, temperature and wind trends, source comparisons,
+forecast freshness and data quality summaries.
+
+Missing observations are explicitly identified.
+
+### Generate risk alerts
+
+    docker compose run --rm pipeline alerts
+
+Alerts are stored in PostgreSQL and written to the
+application log. Unique city-hour keys prevent repeated
+notifications.
+
+The database-and-log fallback requires programme agreement.
+
+### Stop the dashboard
+
+    docker compose stop dashboard
+
+This does not remove PostgreSQL warehouse data.
+
+### Verified results
+
+- 79 automated tests passed.
+- Overall coverage: 89.99%.
+- Alert module coverage: 78%.
+- Dashboard HTTP health check passed.
+- Five cities and 3840 warehouse records displayed.
+- End-to-end alert generation and deduplication passed.
+
+### Outstanding integration
+
+- WeatherAPI source comparison: Task 3.1.
+- Airflow failure notifications: Task 3.4.
+- Week 3 reflection.
+
+Additional documentation:
+
+- [Task 3.6 acceptance evidence](docs/task_3_6_acceptance.md)
+- [ADR 0003: Alert delivery](docs/adr/0003-alert-delivery-and-deduplication.md)
