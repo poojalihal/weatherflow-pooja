@@ -1,13 +1,17 @@
 """Load and validate WeatherFlow configuration."""
 
 import logging
+import os
 from pathlib import Path
 
 import yaml
 
 logger = logging.getLogger(__name__)
 
-CONFIG_FILE = Path(__file__).resolve().parents[2] / "config.yaml"
+CONFIG_FILE = Path(
+    os.getenv("WEATHERFLOW_CONFIG")
+    or (Path(__file__).resolve().parents[2] / "config.yaml")
+)
 
 
 def _require_keys(data: dict, keys: list[str], section: str) -> None:
