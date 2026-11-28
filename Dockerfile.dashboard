@@ -1,0 +1,27 @@
+FROM python:3.13-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /app
+
+COPY requirements-dashboard.txt ./
+
+RUN python -m pip install --no-cache-dir \
+    -r requirements-dashboard.txt
+
+COPY config.yaml ./
+COPY dashboard/ ./dashboard/
+
+RUN groupadd --gid 1000 weatherflow && \
+    useradd --uid 1000 --gid 1000 \
+        --create-home weatherflow && \
+    mkdir -p /app/docs/dq_reports
+
+USER weatherflow
+
+EXPOSE 8501
+
+ENTRYPOINT ["python", "-m", "streamlit", "run", "dashboard/app.py"]
+
+CMD ["--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]
