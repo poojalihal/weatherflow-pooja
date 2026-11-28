@@ -59,6 +59,8 @@ def main() -> int:
     try:
 
         config = load_config()
+        from .postgres import configure_database
+        configure_database(config)
 
         log_file = config["paths"]["log_file"]
 

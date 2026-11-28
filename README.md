@@ -1158,3 +1158,75 @@ Technical acceptance criteria have been satisfied.
 
 Peer review remains pending until a review exchange
 has been completed and received feedback addressed.
+
+## Week 3: PostgreSQL warehouse
+
+WeatherFlow supports a PostgreSQL 18 dimensional warehouse
+running in Docker Compose.
+
+### Start the warehouse
+
+Copy .env.example to .env if it does not already exist.
+Replace the example password with a strong, URL-safe password
+and update DATABASE_URL to match.
+
+Never commit .env.
+
+    docker compose up -d --wait warehouse
+    docker compose ps
+
+Connection addresses:
+
+- From the host: localhost:5433
+- From another container: warehouse:5432
+
+The named volume preserves the database when the warehouse
+container is recreated.
+
+Do not use docker compose down -v unless you intentionally
+want to delete the warehouse data.
+
+### Pipeline execution
+
+When DATABASE_URL is configured, the CLI selects PostgreSQL.
+Without DATABASE_URL, the existing SQLite backend is used.
+
+On a Python environment with working Psycopg dependencies:
+
+    python -m pip install -r requirements-dev.txt
+    python -m pip install -e .
+    python -m weatherflow backfill --days 7
+    python -m weatherflow run
+
+On this project's Windows development machine, native
+Psycopg execution is restricted by Application Control.
+
+PostgreSQL-dependent operations therefore use a temporary
+Linux development image and the wfdev shell helper.
+
+Task 3.3 will provide the permanent Dockerfile and Compose
+pipeline service for reproducible execution.
+
+### PostgreSQL analytical queries
+
+    docker compose exec -T warehouse psql \
+    -U weatherflow -d weatherflow \
+    -v ON_ERROR_STOP=1 \
+    -f - < sql/analysis_queries.sql
+
+### Verified Task 3.2 results
+
+- 76 automated tests passed.
+- Overall test coverage: 91.69%.
+- Historical archive records: 3,600.
+- Forecast records: 240.
+- Total fact records: 3,840.
+- Three consecutive live runs retained identical fact counts.
+- Atomic rollback and persistent storage verified.
+- Five analytical queries executed successfully.
+
+Additional documentation:
+
+- [Task 3.2 acceptance evidence](docs/task_3_2_acceptance.md)
+- [ADR 0001: PostgreSQL warehouse](docs/adr/0001-postgresql-warehouse.md)
+- [PostgreSQL schema](sql/schema_postgres.sql)

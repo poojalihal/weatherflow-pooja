@@ -1,5 +1,5 @@
--- WeatherFlow star-schema analytical queries.
--- Query 2 uses :yesterday, supplied as a UK calendar date.
+-- WeatherFlow PostgreSQL analytical queries.
+-- Query 2 calculates yesterday in UK local time.
 
 -- Query 1: Record count and observation range by city.
 
@@ -19,13 +19,13 @@ ORDER BY c.city_name;
 
 SELECT
     c.city_name,
-    ROUND(AVG(f.temperature_c), 2) AS average_temperature_c
+    ROUND(AVG(f.temperature_c)::NUMERIC, 2) AS average_temperature_c
 FROM fact_weather_hourly AS f
 JOIN dim_city AS c
     ON f.city_id = c.city_id
 JOIN dim_date AS d
     ON f.date_id = d.date_id
-WHERE d.full_date = :yesterday
+WHERE d.full_date = ((CURRENT_TIMESTAMP AT TIME ZONE 'Europe/London')::DATE - 1)
 GROUP BY c.city_name
 ORDER BY average_temperature_c DESC;
 
@@ -36,12 +36,12 @@ SELECT
     c.city_name,
     f.observed_at_utc,
     f.observed_at_local,
-    ROUND(f.wind_speed_kmh, 2) AS wind_speed_kmh,
+    ROUND(f.wind_speed_kmh::NUMERIC, 2) AS wind_speed_kmh,
     f.beaufort_scale
 FROM fact_weather_hourly AS f
 JOIN dim_city AS c
     ON f.city_id = c.city_id
-ORDER BY f.wind_speed_kmh DESC, f.observed_at_utc
+ORDER BY f.wind_speed_kmh DESC NULLS LAST, f.observed_at_utc
 LIMIT 5;
 
 
@@ -50,10 +50,10 @@ LIMIT 5;
 SELECT
     c.city_name,
     CASE
-        WHEN d.is_weekend = 1 THEN 'Weekend'
+        WHEN d.is_weekend THEN 'Weekend'
         ELSE 'Weekday'
     END AS day_type,
-    ROUND(AVG(f.wind_speed_kmh), 2) AS average_wind_kmh,
+    ROUND(AVG(f.wind_speed_kmh)::NUMERIC, 2) AS average_wind_kmh,
     COUNT(*) AS observations
 FROM fact_weather_hourly AS f
 JOIN dim_city AS c

@@ -230,12 +230,21 @@ def plan_incremental(
 
     for city in config["cities"]:
 
-        watermark = read_watermark(
-            config["paths"]["database"],
-            city["name"],
-            FORECAST_SOURCE,
-            now_utc,
-        )
+        if config.get("database_backend") == "postgres":
+            from .postgres import read_postgres_watermark
+
+            watermark = read_postgres_watermark(
+                city["name"],
+                FORECAST_SOURCE,
+                now_utc,
+            )
+        else:
+            watermark = read_watermark(
+                config["paths"]["database"],
+                city["name"],
+                FORECAST_SOURCE,
+                now_utc,
+            )
 
         if watermark is None:
 

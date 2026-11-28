@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta, timezone
 from .extract import extract
 from .transform import transform
 from .load import load
+from .postgres import load_postgres
 from .storage import load_wmo_codes, save_processed
 from .validate import (
     CheckResult,
@@ -215,10 +216,10 @@ def _execute(
                 "No valid records available to load."
             )
 
-        new_count, updated_count = count_load_changes(
-            good,
-            config["paths"]["database"],
-        )
+        if config.get("database_backend") == "postgres":
+            new_count, updated_count = 0, 0
+        else:
+            new_count, updated_count = count_load_changes(good, config['paths']['database'])
 
         save_processed(
             good,
@@ -226,10 +227,10 @@ def _execute(
             run_time,
         )
 
-        loaded_count = load(
-            good,
-            config,
-        )
+        if config.get("database_backend") == "postgres":
+            loaded_count, new_count, updated_count = load_postgres(good, config)
+        else:
+            loaded_count = load(good, config)
 
         logger.info(
             "Load summary: source=%s new=%s updated=%s "
