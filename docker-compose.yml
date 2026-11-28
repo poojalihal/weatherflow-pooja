@@ -18,5 +18,20 @@ services:
       retries: 10
     restart: unless-stopped
 
+  pipeline:
+    build: .
+    image: weatherflow-pipeline:local
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@warehouse:5432/${POSTGRES_DB}
+    depends_on:
+      warehouse:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./docs/dq_reports:/app/docs/dq_reports
+
 volumes:
   pgdata:
